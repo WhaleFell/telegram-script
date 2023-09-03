@@ -1,0 +1,9 @@
+pyrogram
+tgcrypto
+pydantic
+loguru
+sqlalchemy
+
+# pyromod
+# pyromod fix handle channel message version
+git+https://github.com/usernein/pyromod.git
