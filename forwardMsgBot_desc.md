@@ -53,6 +53,7 @@ add_text: String 追加的文本
 
 [sqlalchemy tutorial](https://www.osgeo.cn/sqlalchemy/tutorial/index.html)
 
+```text
 @@来源群组(必)=-1001935250724
 @@目标群组(必)=-1001963862221
 @@转载数量(非必)=20
@@ -61,6 +62,7 @@ add_text: String 追加的文本
 @@截断词(非必)=好像
 @@跳过词(非必)=死亡
 @@追加文本(非必)=
+```
 
 ## requirements.txt
 
