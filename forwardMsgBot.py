@@ -1,5 +1,6 @@
 # ===== Sqlalchemy =====
-from sqlalchemy import select, insert, String, func
+from sqlalchemy import select, insert, func
+from sqlalchemy import BigInteger, String, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
@@ -27,7 +28,7 @@ from functools import wraps
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
 DEBUG = True
-NAME = "cheryywk"
+NAME = "bot"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
 DB_URL = "mysql+aiomysql://root:123456@localhost/tgconfigs?charset=utf8mb4"
@@ -80,7 +81,7 @@ class Cover:
     def set_result(config) -> str:
         return f"""
 数据保存成功:
-id: <code>{config.id}</code> // 存入数据库的 ID 为当前用户ID
+id: <code>{config.id}</code> // 任务id
 来源群组：{config.source}
 目标群组：{config.dest}
 转载数量：{config.forward_history_count}
@@ -89,6 +90,7 @@ id: <code>{config.id}</code> // 存入数据库的 ID 为当前用户ID
 截断词：{config.cut_word}
 跳过词：{config.skip_word}
 追加文本：{config.add_text}
+创建的用户 ID: <code>{config.create_id}</code>
 """
 
 # ===== enum ending ======
@@ -128,8 +130,8 @@ class TGForwardConfig(Base):
     __tablename__ = NAME
 
     id: Mapped[int] = mapped_column(primary_key=True, doc="主键")
-    source: Mapped[int] = mapped_column(doc="源群聊ID")
-    dest: Mapped[int] = mapped_column(doc="目标群聊ID")
+    source: Mapped[str] = mapped_column(String(20), doc="源群聊ID")
+    dest: Mapped[str] = mapped_column(String(20), doc="目标群聊ID")
     forward_history_count: Mapped[int] = mapped_column(doc="转发历史信息的数量")
     interval_second: Mapped[int] = mapped_column(doc="间隔时间单位 s", default=20)
 
@@ -145,6 +147,8 @@ class TGForwardConfig(Base):
     create_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), default=None, nullable=False
     )
+    create_id: Mapped[str] = mapped_column(
+        String(20), doc="设置机器人的用户ID", nullable=True)
 
 
 # 仅同步使用
@@ -156,47 +160,32 @@ class TGForwardConfigManager:
         self.session: async_sessionmaker[AsyncSession] = async_session
         self.all_config_cache: List[TGForwardConfig] = None
 
-    async def get_config(self, config_id: int) -> Optional[TGForwardConfig]:
+    async def get_config(self, create_id: int) -> Union[List[TGForwardConfig], bool]:
         async with self.session() as session:
 
-            config = await session.get(TGForwardConfig, config_id)
-            return config
+            result = await session.scalars(select(TGForwardConfig).where(TGForwardConfig.create_id == create_id))
+            configs = result.all()
+
+            if not configs:
+                return False
+            elif len(configs) == 1:
+                return configs[0]
+            else:
+                return configs
 
     async def saveConfig(self, config: TGForwardConfig):
-
         async with self.session() as session:
-            existing_config = await self.get_config(config_id=config.id)
-            if existing_config:
-                # 如果存在，就更新数据
-                existing_config.source = config.source
-                existing_config.dest = config.dest
-                existing_config.forward_history_count = config.forward_history_count
-                existing_config.interval_second = config.interval_second
-                existing_config.remove_word = config.remove_word
-                existing_config.cut_word = config.cut_word
-                existing_config.skip_word = config.skip_word
-                existing_config.add_text = config.add_text
-                await session.commit()
-            else:
-                session.add(config)
-                await session.commit()
+            session.add(config)
+            await session.commit()
 
         await self.get_all_configs()
 
-    async def get_config(self, config_id: int) -> TGForwardConfig:
-        async with self.session() as session:
-            config = await session.get(TGForwardConfig, config_id)
-            if not config:
-                return False
-            return config
-
-    async def update_config(self, config_id: int, **kwargs) -> bool:
+    async def update_config(self, create_id: int, **kwargs) -> bool:
 
         async with self.session() as session:
-            config = await self.get_config(config_id)
+            config = await self.get_config(create_id)
             if not config:
                 return config
-
             for key, value in kwargs.items():
                 # https://www.runoob.com/python/python-func-setattr.html
                 setattr(config, key, value)
@@ -210,6 +199,7 @@ class TGForwardConfigManager:
                 select(TGForwardConfig)
             )
             self.all_config_cache = configs.scalars().all()
+
             return self.all_config_cache
 
 
@@ -276,7 +266,6 @@ def parser(string: str, message: Message) -> TGForwardConfig:
             data[key] = value
 
     config = TGForwardConfig(
-        id=message.chat.id,
         forward_history_count=data['转载数量'],
         interval_second=data['转载间隔时间'],
         source=data['来源群组'],
@@ -284,7 +273,8 @@ def parser(string: str, message: Message) -> TGForwardConfig:
         remove_word=data['去除词'],
         cut_word=data['截断词'],
         skip_word=data['跳过词'],
-        add_text=data['追加文本']
+        add_text=data['追加文本'],
+        create_id=message.chat.id
     )
 
     return config
@@ -295,9 +285,17 @@ def parser(string: str, message: Message) -> TGForwardConfig:
 async def set(client: Client, message: Message):
     msg = await message.reply(text="查询用户信息中....")
     config = await manager.get_config(message.chat.id)
+
     if not config:
         await msg.edit_text(f"用户 ID:<code>{message.chat.id}</code>\n{Cover.user_not_found}")
-    else:
+    elif isinstance(config, List):
+        string = ""
+        for cf in config:
+            string += f"{cf.source} ==> {cf.dest} \n"
+
+        await msg.edit_text(f"用户 ID <code>{message.chat.id}</code>,设置了{len(config)}个参数\n{string}")
+
+    elif isinstance(config, TGForwardConfig):
         await msg.edit_text(f"用户 ID:<code>{message.chat.id}</code> 设置的参数(输入 /set 重新设置):\n{Cover.set_result(config)}")
 
 
@@ -315,7 +313,7 @@ async def set(client: Client, message: Message):
         await client.resolve_peer(int(config.source))
     except Exception as e:
         await message.reply(f"获取id失败,请检查！id是否正确,使用 /getID 获取群聊ID\n<code>{e}</code>")
-        raise e
+        # raise e
 
     await manager.saveConfig(config)
     await ans.reply(text=Cover.set_result(config))
@@ -411,7 +409,7 @@ async def handle_ch_gp(client: Client, message: Message):
 @app.on_message(filters=filters.command("forwardHistoryMsg") & filters.private & ~filters.me)
 @capture_err
 async def forwardHistoryMsg(client: Client, message: Message):
-    config = await manager.get_config(config_id=message.chat.id)
+    config: TGForwardConfig = await manager.get_config(config_id=message.chat.id)
 
     if not config:
         return await message.reply("没有找到您设置的信息,请使用 /set 设置!")
@@ -500,4 +498,5 @@ if __name__ == "__main__":
 
         loop.run_until_complete(asyncio.sleep(3.0))  # task cancel wait 等待任务结束
 
-    # asyncio.run(makeSessionString())
+    # asyncio.run(makeSessionString(
+    #     bot_token="6600787006:AAFbLYNf2rv_fiTLDsuvXYT_cue8GR6bm18"))

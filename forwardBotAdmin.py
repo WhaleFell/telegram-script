@@ -8,7 +8,7 @@ from datetime import datetime
 
 # ====== pyrogram =======
 import pyromod
-from pyromod.helpers import ikb, array_chunk
+from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 from pyrogram import Client, idle, filters
 from pyrogram.types import Message, InlineKeyboardMarkup
 from pyrogram.enums import ParseMode
@@ -34,7 +34,11 @@ API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
 __desc__ = """
-这是一个 telegram pyrogram 机器人单文件编程模板,个人自用
+欢迎使用爱国转载傀儡号管理系统！
+支持以下功能:
+1. 分配傀儡号
+2. 设置并管理傀儡号
+3. 查看傀儡号状态
 """
 # ====== Config End ======
 
@@ -65,6 +69,8 @@ def capture_err(func):
     return capture
 # ====== error handle end =========
 
+# ====== Client maker =======
+
 
 def makeClient(path: Path) -> Client:
     session_string = path.read_text(encoding="utf8")
@@ -90,6 +96,52 @@ async def makeSessionString(**kwargs) -> str:
         print(await c.export_session_string())
 
 app = makeClient(SESSION_PATH)
+
+# ====== Client maker end =======
+
+# ====== helper function  ====
+
+
+async def askQuestion(queston: str, client: Client, message: Message, timeout: int = 200) -> Union[Message, bool]:
+    try:
+        ans: Message = await message.chat.ask(queston, timeout=timeout)
+        return ans
+    except pyromod.listen.ListenerTimeout:
+        await message.reply(f"超时 {timeout}s,请重新开始")
+    except Exception as exc:
+        await message.reply(f"发送错误:\n <code>{exc}</code>")
+    return False
+
+
+def try_int(string: str) -> Union[str, int]:
+    try:
+        return int(string)
+    except:
+        return string
+
+
+# ====== helper function end ====
+
+# ===== Handle ======
+
+
+@app.on_message(filters=filters.command("start") & filters.private & ~filters.me)
+@capture_err
+async def start(client: Client, message: Message):
+    await message.reply_text(__desc__)
+
+
+@app.on_message(filters=filters.command("id") & filters.private & ~filters.me)
+@capture_err
+async def handle_id_command(client: Client, message: Message):
+    ans: Message = await askQuestion("请输入用户名、邀请链接等，机器人会尝试获取id", client, message)
+
+    id = await client.get_chat(chat_id=try_int(ans.text))
+
+    await ans.reply(f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>")
+
+
+# ==== Handle end =====
 
 
 async def main():
@@ -117,4 +169,9 @@ type: {"Bot" if user.is_bot else "User"}
     await app.stop()
 
 if __name__ == "__main__":
-    pass
+    loop = asyncio.get_event_loop()
+    with closing(loop):
+        with suppress(asyncio.exceptions.CancelledError):
+            loop.run_until_complete(main())
+        loop.run_until_complete(asyncio.sleep(3.0))  # task cancel wait 等待任务结束
+    # asyncio.run(makeSessionString())
