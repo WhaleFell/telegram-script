@@ -1,4 +1,5 @@
 # ===== Sqlalchemy =====
+from dataclasses import dataclass
 from sqlalchemy import select, insert, func, update
 from sqlalchemy import BigInteger, String, Integer, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
@@ -14,7 +15,7 @@ import pyromod
 from pyromod.listen.listen import ListenerTypes
 from pyromod.helpers import ikb, array_chunk
 from pyrogram import Client, idle, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineQueryResult, CallbackQuery
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineQueryResult, CallbackQuery, User
 from pyrogram.enums import ParseMode
 # ====== pyrogram end =====
 
@@ -36,7 +37,7 @@ DEBUG = True
 NAME = os.environ.get("NAME") or "bot"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = "sqlite+aiosqlite:///database.db"
+DB_URL = "mysql+aiomysql://root:123456@localhost:3306/tgconfigs"
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
@@ -154,11 +155,23 @@ class Base(AsyncAttrs, DeclarativeBase):
 async_session = async_sessionmaker(bind=engine, expire_on_commit=False)
 
 
+def get_user_id():
+    global user
+    return str(user.id)
+
+
 # 定义数据模型
+
+
+@dataclass
 class TGForwardConfig(Base):
-    __tablename__ = NAME
+    __tablename__ = "forward_configs"
 
     id: Mapped[int] = mapped_column(primary_key=True, doc="主键")
+    # varchar(20) = String(20) 变长字符串
+    user_id: Mapped[str] = mapped_column(
+        String(20), doc="傀儡号的唯一标识符", default=get_user_id
+    )
     source: Mapped[str] = mapped_column(String(20), doc="源群聊ID")
     dest: Mapped[str] = mapped_column(String(20), doc="目标群聊ID")
     forward_history_count: Mapped[int] = mapped_column(doc="转发历史信息的数量")
@@ -194,7 +207,11 @@ class TGForwardConfigManager:
     async def get_config(self, create_id: int) -> Union[TGForwardConfig, List[TGForwardConfig], bool]:
         async with self.session() as session:
 
-            result = await session.scalars(select(TGForwardConfig).where(TGForwardConfig.create_id == create_id))
+            result = await session.scalars(
+                select(TGForwardConfig)
+                .where(TGForwardConfig.create_id == create_id)
+                .where(TGForwardConfig.user_id == get_user_id())
+            )
             configs = result.all()
 
             if not configs:
@@ -229,6 +246,7 @@ class TGForwardConfigManager:
             await session.execute(
                 update(TGForwardConfig)
                 .where(TGForwardConfig.create_id == config.create_id)
+                .where(TGForwardConfig.user_id == get_user_id())
                 .values(
                     forward_history_state=not config.forward_history_state)
             )
@@ -239,6 +257,9 @@ class TGForwardConfigManager:
         async with self.session() as session:
             configs = await session.execute(
                 select(TGForwardConfig)
+                .where(
+                    TGForwardConfig.user_id == get_user_id()
+                )
             )
             self.all_config_cache = configs.scalars().all()
 
@@ -540,14 +561,14 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
 @logger.catch()
 async def main():
     # 异步使用 Base.metadata.create_all
+    global user, app
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    global app
-    await manager.get_all_configs()
     await app.start()
-
     user = await app.get_me()
+    await manager.get_all_configs()
 
     # ===== Test Code =======
     # chat_id = await app.get_chat("@w2ww2w2w")

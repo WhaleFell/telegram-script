@@ -1,19 +1,26 @@
 # /usr/bin/python3
 # 通过大量的 TG 账号举报 TG 用户到达封号的目的
+# 使用方法：
+# 添加用户账号,会保存 session 字符串到 session 目录
+# python reportBlockUser.py dump_session 名字
+# 设置完需要举报的账号后, python reportBlockUser.py start 开始举报
+##########
+# 需要举报的账号
 import asyncio
-# https://docs.pyrogram.org/topics/advanced-usage#invoking-functions
 from pyrogram.raw import functions, types
 from pyrogram import Client, idle
 from contextlib import closing, suppress
 import functools
 from pathlib import Path
-# https://click-docs-zh-cn.readthedocs.io/zh/latest/
 import click
 from typing import List
 import glob
 import os
 from loguru import logger
 import sys
+report_user = "@linxi"
+# https://docs.pyrogram.org/topics/advanced-usage#invoking-functions
+# https://click-docs-zh-cn.readthedocs.io/zh/latest/
 
 API_ID = "28340368"
 API_HASH = "514cc2ec366cf8c59b7ad84560598660"
@@ -115,8 +122,6 @@ Thank you for your attention to this matter.
         logger.exception(e)
     finally:
         await asyncio.sleep(5)
-
-report_user = "@zoonz20045"
 
 
 async def main():

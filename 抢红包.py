@@ -1,118 +1,173 @@
-from pyrogram import Client, compose, filters, handlers, types as ptypes, errors
-from pyrogram.raw import functions, types
-import os
+# ===== Sqlalchemy =====
+from sqlalchemy import select, insert, String, func
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
+from datetime import datetime
+# ====== sqlalchemy end =====
+
+# ====== pyrogram =======
+import pyromod
+from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
+from pyrogram import Client, idle, filters
+from pyrogram.types import Message, InlineKeyboardMarkup
+from pyrogram.enums import ParseMode
+# ====== pyrogram end =====
+
+from contextlib import closing, suppress
+from typing import List, Union, Any, Optional
+from pathlib import Path
 import asyncio
-import sys
 from loguru import logger
+import sys
+import re
+from functools import wraps
 
-api_id = "28340368"
-api_hash = "514cc2ec366cf8c59b7ad84560598660"
+# ====== Config ========
+ROOTPATH: Path = Path(__file__).parent.absolute()
+DEBUG = True
+NAME = "bot"
+# SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
+# 异步 mysql+aiomysql://user:password@host:port/dbname
+DB_URL = "mysql+aiomysql://root:123456@localhost/tgconfigs?charset=utf8mb4"
+API_ID = 21341224
+API_HASH = "2d910cf3998019516d6d4bbb53713f20"
+SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
+__desc__ = """
+这是一个 telegram pyrogram 机器人单文件编程模板,个人自用
+"""
+# ====== Config End ======
 
-group_ids = [-1001797337928, -1001615949926]
-
-debug = True
-
-loglevel = "DEBUG"
-
+# ===== logger ====
 logger.remove()
 logger.add(
     sys.stdout,
     colorize=True,
     format="<green>{time:HH:mm:ss}</green> | {name}:{function} {level} | <level>{message}</level>",
-    level=loglevel,
+    level="DEBUG" if DEBUG else "INFO",
     backtrace=True,
     diagnose=True
 )
+# ===== logger end =====
 
-SERVICE_INFO = {
-    "name": "ok红包脚本2",
-}
+# ===== error handle =====
+
+
+def capture_err(func):
+    """handle error and notice user"""
+    @wraps(func)
+    async def capture(client: Client, message: Message, *args, **kwargs):
+        try:
+            return await func(client, message, *args, **kwargs)
+        except Exception as err:
+            await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
+            raise err
+    return capture
+# ====== error handle end =========
+
+# ====== Client maker =======
+
+
+def makeClient(path: Path) -> Client:
+    session_string = path.read_text(encoding="utf8")
+    return Client(
+        name="test",
+        api_id=API_ID,
+        api_hash=API_HASH,
+        session_string=session_string,
+        in_memory=True
+    )
+
+
+async def makeSessionString(**kwargs) -> str:
+    client = Client(
+        name="test",
+        api_id=API_ID,
+        api_hash=API_HASH,
+        in_memory=True,
+        **kwargs
+    )
+
+    async with client as c:
+        print(await c.export_session_string())
+
+app = makeClient(SESSION_PATH)
+
+# ====== Client maker end =======
+
+# ====== helper function  ====
+
+
+async def askQuestion(queston: str, client: Client, message: Message, timeout: int = 200) -> Union[Message, bool]:
+    try:
+        ans: Message = await message.chat.ask(queston, timeout=timeout)
+        return ans
+    except pyromod.listen.ListenerTimeout:
+        await message.reply(f"超时 {timeout}s,请重新开始")
+    except Exception as exc:
+        await message.reply(f"发送错误:\n <code>{exc}</code>")
+    return False
+
+
+def try_int(string: str) -> Union[str, int]:
+    try:
+        return int(string)
+    except:
+        return string
+
+
+# ====== helper function end ====
+
+# ===== Handle ======
+
+
+@app.on_message(filters=filters.command("start") & filters.private & ~filters.me)
+@capture_err
+async def start(client: Client, message: Message):
+    await message.reply_text(__desc__)
+
+
+@app.on_message(filters=filters.command("id") & filters.private & ~filters.me)
+@capture_err
+async def handle_id_command(client: Client, message: Message):
+    ans: Message = await askQuestion("请输入用户名、邀请链接等，机器人会尝试获取id", client, message)
+
+    id = await client.get_chat(chat_id=try_int(ans.text))
+
+    await ans.reply(f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>")
+
+
+# ==== Handle end =====
 
 
 async def main():
-    session_files = [i for i in os.listdir(
-        sys.path[0]) if i.endswith(".session")]
-    apps = []
-    for i in session_files:
+    global app
+    await app.start()
+    user = await app.get_me()
 
-        app = Client(i.split('.')[0], api_id=api_id,
-                     api_hash=api_hash, workdir=sys.path[0], device_model="wf-tgbot")
+    # ===== Test Code =======
+    # chat_id = await app.get_chat("@w2ww2w2w")
+    # print(chat_id)
 
-        me = None
-        #  try login
-        try:
-            async with app:
-                # keep oneline
-                await app.invoke(functions.account.UpdateStatus(offline=False))
-                me = await app.get_me()
-                logger.success(
-                    f"login Account Success user:{me.first_name} phone_number:{me.phone_number}"
-                )
-        except:
-            print(i, "失效")
-            continue
+    # ======== Test Code end ==========
 
-        def mk_pocket_handler(me):
-            async def pocket_handler(client: Client, message: types.message.Message):
-                # 判断信息
-                if message.text == None and message.caption == None and message.game == None:
-                    return
+    logger.success(
+        f"""
+-------login success--------
+username: {user.first_name}
+type: {"Bot" if user.is_bot else "User"}
+@{user.username}
+----------------------------
+"""
+    )
 
-                # 判断是否含有回复标记 即回复按钮
-                if hasattr(message.reply_markup, "inline_keyboard"):
-                    for i in message.reply_markup.inline_keyboard:
-                        for i in i:
-                            logger.info("bnt:%s" % i)
-                            try:
-                                # 请求机器人回拨答案。这相当于单击包含回调数据的内联按钮。
-                                await client.request_callback_answer(
-                                    chat_id=message.chat.id,
-                                    message_id=message.id,
-                                    callback_data=i.callback_data,
-                                )
-                                logger.success("抢红包触发，消息ID:", message.id)
-
-                            except Exception as e:
-                                logger.exception("error!")
-                                # logger.error(message)
-                                logger.critical(f"{e}")
-            return pocket_handler
-
-        # 监听自己签到红包的信息
-        def mk_pocket_edited_handler(me):
-            """closure is use to mk pocket_edited_handler"""
-            async def pocket_edited_handler(client: Client, message: types.message.Message):
-                if message.text == None:
-                    return
-                if "红包" in message.text and me.first_name in message.text:
-                    for i in message.text.split("\n\n")[1].split("\n"):
-                        if me.first_name in i:
-                            print(me.first_name, "抢到", i.split(' ')[1].split(
-                                '(')[0], message.text.split("💰")[0].split(" ")[-1])
-            return pocket_edited_handler
-
-        app.add_handler(handlers.MessageHandler(
-            mk_pocket_handler(me), filters=filters.chat(group_ids)))
-        app.add_handler(handlers.edited_message_handler.EditedMessageHandler(
-            mk_pocket_edited_handler(me), filters=filters.chat(group_ids)))
-        apps.append(app)
-
-    print("全部用户登录完毕，开始运行。")
-    print("监听以下群组")
-    for i in group_ids:
-        print(i)
-
-    # 监听多个账号
-    await compose(apps)
-
+    await idle()
+    await app.stop()
 
 if __name__ == "__main__":
-    if debug:
-        asyncio.run(main())
-    else:
-        # close input error
-        os.close(sys.stderr.fileno())
-        try:
-            asyncio.run(main())
-        except:
-            pass
+    loop = asyncio.get_event_loop()
+    with closing(loop):
+        with suppress(asyncio.exceptions.CancelledError):
+            loop.run_until_complete(main())
+        loop.run_until_complete(asyncio.sleep(3.0))  # task cancel wait 等待任务结束
+    # asyncio.run(makeSessionString())
