@@ -148,6 +148,11 @@ def try_int(string: str) -> Union[str, int]:
         return string
 
 
+def get_user_id():
+    global user
+    return str(user.id)
+
+
 # ====== helper function end ====
 
 # ====== db model ======
@@ -161,6 +166,39 @@ class Base(AsyncAttrs, DeclarativeBase):
 # 会话构造器
 async_session: async_sessionmaker[AsyncSession] = async_sessionmaker(
     bind=engine, expire_on_commit=False)
+
+
+class TGForwardConfig(Base):
+    __tablename__ = "forward_configs"
+    __table_args__ = {'comment': '转载配置表'}
+
+    id: Mapped[int] = mapped_column(primary_key=True, comment="主键")
+    # varchar(20) = String(20) 变长字符串
+    user_id: Mapped[str] = mapped_column(
+        String(20), comment="傀儡号的唯一标识符", default=get_user_id
+    )
+    source: Mapped[str] = mapped_column(String(20), comment="源群聊ID")
+    dest: Mapped[str] = mapped_column(String(20), comment="目标群聊ID")
+    forward_history_count: Mapped[int] = mapped_column(comment="转发历史信息的数量")
+    forward_history_state: Mapped[bool] = mapped_column(
+        Boolean(), comment="转发历史信息的状态", nullable=True, default=False)
+    interval_second: Mapped[int] = mapped_column(doc="间隔时间单位 s", default=20)
+
+    remove_word: Mapped[Optional[str]] = mapped_column(
+        String(100), comment="删除的文字,用,分隔", nullable=True)
+    cut_word: Mapped[Optional[str]] = mapped_column(
+        String(100), comment="截断词,用 , 分隔", nullable=True)
+    skip_word: Mapped[Optional[str]] = mapped_column(
+        String(100), comment="跳过词,用 , 分隔", nullable=True)
+    add_text: Mapped[Optional[str]] = mapped_column(
+        String(100), comment="跳过语,用 , 分隔", nullable=True)
+    # 使用 server_default 而不是 default ，因此值将由数据库本身处理。
+    create_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), default=None, nullable=False
+    )
+    create_id: Mapped[str] = mapped_column(
+        String(20), comment="设置机器人的用户ID", nullable=True)
+
 
 # ====== db model end ======
 
@@ -213,7 +251,7 @@ async def handle_id_command(client: Client, message: Message):
 
 
 async def main():
-    global app
+    global app, user
     await app.start()
     user = await app.get_me()
 

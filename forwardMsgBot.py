@@ -163,7 +163,6 @@ def get_user_id():
 # 定义数据模型
 
 
-@dataclass
 class TGForwardConfig(Base):
     __tablename__ = "forward_configs"
 
