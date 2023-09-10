@@ -1,5 +1,5 @@
 # ===== Sqlalchemy =====
-from sqlalchemy import select, insert, String, func
+from sqlalchemy import select, insert, String, func, Boolean, text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
@@ -10,7 +10,7 @@ from datetime import datetime
 import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 from pyrogram import Client, idle, filters
-from pyrogram.types import Message, InlineKeyboardMarkup
+from pyrogram.types import Message, InlineKeyboardMarkup, CallbackQuery
 from pyrogram.enums import ParseMode
 # ====== pyrogram end =====
 
@@ -18,6 +18,7 @@ from contextlib import closing, suppress
 from typing import List, Union, Any, Optional
 from pathlib import Path
 import asyncio
+from asyncio import Queue
 from loguru import logger
 import sys
 import re
@@ -39,6 +40,10 @@ __desc__ = """
 1. 分配傀儡号
 2. 设置并管理傀儡号
 3. 查看傀儡号状态
+/start 开始
+/state 查询当前机器人池的状态
+
+/id 获取ID
 """
 # ====== Config End ======
 
@@ -53,6 +58,29 @@ logger.add(
     diagnose=True
 )
 # ===== logger end =====
+
+# ====== callback Queue ========
+
+
+class CallbackDataQueue(object):
+    def __init__(self) -> None:
+        self.queue = Queue()
+
+    async def addCallback(self, callbackQuery: CallbackQuery):
+        await self.queue.put(callbackQuery)
+
+    async def moniterCallback(self, message: Message, timeout: int = 10) -> CallbackQuery:
+        while True:
+            cb: CallbackQuery = await asyncio.wait_for(self.queue.get(), timeout=timeout)
+            if cb.message.id == message.id:
+                return cb
+            else:
+                await self.queue.put(cb)
+
+
+cd = CallbackDataQueue()
+
+# ====== callback Queue end ========
 
 # ===== error handle =====
 
@@ -122,13 +150,53 @@ def try_int(string: str) -> Union[str, int]:
 
 # ====== helper function end ====
 
+# ====== db model ======
+engine = create_async_engine(DB_URL)
+
+
+class Base(AsyncAttrs, DeclarativeBase):
+    pass
+
+
+# 会话构造器
+async_session: async_sessionmaker[AsyncSession] = async_sessionmaker(
+    bind=engine, expire_on_commit=False)
+
+# ====== db model end ======
+
+# ====== Text Enum ======
+
+
+class Texts(object):
+    pass
+
+
+# ====== Text Enum end =====
+
 # ===== Handle ======
+
+@app.on_callback_query()
+async def handle_callback_query(client: Client, callback_query: CallbackQuery):
+    await cd.addCallback(callback_query)
 
 
 @app.on_message(filters=filters.command("start") & filters.private & ~filters.me)
 @capture_err
 async def start(client: Client, message: Message):
     await message.reply_text(__desc__)
+
+
+@app.on_message(filters=filters.command("state") & filters.private & ~filters.me)
+@capture_err
+async def start(client: Client, message: Message):
+    async with async_session() as session:
+        result = await session.execute(
+            text("SHOW TABLES;")
+        )
+        string = ""
+        for k, name in enumerate(result.fetchall()[0]):
+            string += f"【{k}】{name}\n"
+        await message.reply(f"目前有的傀儡号:\n{string}")
 
 
 @app.on_message(filters=filters.command("id") & filters.private & ~filters.me)

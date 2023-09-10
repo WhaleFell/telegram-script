@@ -4,6 +4,8 @@ pydantic
 loguru
 sqlalchemy
 aiomysql
+aiosqlite
+
 
 # pyromod
 # pyromod fix handle channel message version

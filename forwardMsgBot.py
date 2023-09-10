@@ -1,6 +1,6 @@
 # ===== Sqlalchemy =====
 from sqlalchemy import select, insert, func
-from sqlalchemy import BigInteger, String, Integer
+from sqlalchemy import BigInteger, String, Integer, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
@@ -10,9 +10,11 @@ from datetime import datetime
 # ====== pyrogram =======
 # https://stackoverflow.com/questions/74163185/send-premium-emoji-with-pyrogram
 import pyromod
+# ListenerTypes.CALLBACK_QUERY
+from pyromod.listen.listen import ListenerTypes
 from pyromod.helpers import ikb, array_chunk
 from pyrogram import Client, idle, filters
-from pyrogram.types import Message, InlineKeyboardMarkup
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineQueryResult, CallbackQuery
 from pyrogram.enums import ParseMode
 # ====== pyrogram end =====
 
@@ -24,6 +26,8 @@ from loguru import logger
 import sys
 import re
 from functools import wraps
+import time
+from asyncio import Queue
 
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
@@ -31,7 +35,7 @@ DEBUG = True
 NAME = "bot"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = "mysql+aiomysql://root:123456@localhost/tgconfigs?charset=utf8mb4"
+DB_URL = "sqlite+aiosqlite:///database.db"
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
@@ -104,6 +108,8 @@ def capture_err(func):
     async def capture(client: Client, message: Message, *args, **kwargs):
         try:
             return await func(client, message, *args, **kwargs)
+        except TimeoutError:
+            await message.reply("机器人点击按钮/发送文本时超时了,请重新开始！")
         except Exception as err:
             await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
             raise err
@@ -111,6 +117,28 @@ def capture_err(func):
 
 # ====== error handle end =========
 
+
+# ====== callback Queue ========
+
+class CallbackDataQueue(object):
+    def __init__(self) -> None:
+        self.queue = Queue()
+
+    async def addCallback(self, callbackQuery: CallbackQuery):
+        await self.queue.put(callbackQuery)
+
+    async def moniterCallback(self, message: Message, timeout: int = 10) -> CallbackQuery:
+        while True:
+            cb: CallbackQuery = await asyncio.wait_for(self.queue.get(), timeout=timeout)
+            if cb.message.id == message.id:
+                return cb
+            else:
+                await self.queue.put(cb)
+
+
+cd = CallbackDataQueue()
+
+# ====== callback Queue end ========
 
 # 创建数据库引擎
 # https://github.com/talkpython/web-applications-with-fastapi-course/issues/4
@@ -133,6 +161,8 @@ class TGForwardConfig(Base):
     source: Mapped[str] = mapped_column(String(20), doc="源群聊ID")
     dest: Mapped[str] = mapped_column(String(20), doc="目标群聊ID")
     forward_history_count: Mapped[int] = mapped_column(doc="转发历史信息的数量")
+    forward_history_state: Mapped[bool] = mapped_column(
+        Boolean(), doc="转发历史信息的状态", nullable=True, default=False)
     interval_second: Mapped[int] = mapped_column(doc="间隔时间单位 s", default=20)
 
     remove_word: Mapped[Optional[str]] = mapped_column(
@@ -160,7 +190,7 @@ class TGForwardConfigManager:
         self.session: async_sessionmaker[AsyncSession] = async_session
         self.all_config_cache: List[TGForwardConfig] = None
 
-    async def get_config(self, create_id: int) -> Union[List[TGForwardConfig], bool]:
+    async def get_config(self, create_id: int) -> Union[TGForwardConfig, List[TGForwardConfig], bool]:
         async with self.session() as session:
 
             result = await session.scalars(select(TGForwardConfig).where(TGForwardConfig.create_id == create_id))
@@ -291,7 +321,7 @@ async def set(client: Client, message: Message):
     elif isinstance(config, List):
         string = ""
         for cf in config:
-            string += f"{cf.source} ==> {cf.dest} \n"
+            string += f"{cf.source} ==> {cf.dest} \n 转发历史信息:{cf.forward_history_state}\n"
 
         await msg.edit_text(f"用户 ID <code>{message.chat.id}</code>,设置了{len(config)}个参数\n{string}")
 
@@ -409,13 +439,40 @@ async def handle_ch_gp(client: Client, message: Message):
 @app.on_message(filters=filters.command("forwardHistoryMsg") & filters.private & ~filters.me)
 @capture_err
 async def forwardHistoryMsg(client: Client, message: Message):
-    config: TGForwardConfig = await manager.get_config(config_id=message.chat.id)
+    configs: TGForwardConfig = await manager.get_config(create_id=message.chat.id)
 
-    if not config:
+    if not configs:
         return await message.reply("没有找到您设置的信息,请使用 /set 设置!")
-    await message.reply(f"您的源群组:<code>{config.dest}</code> 目标群组:<code>{config.source}</code> \n 读取历史信息:{config.forward_history_count} 发送间隔:{config.interval_second}s\n **现在开始转发**")
+    elif isinstance(configs, list):
+        string = ""
+        for k, cf in enumerate(configs):
+            string += f"【{k}】{cf.source} ==> {cf.dest}\n"
+
+        choose: Message = await askQuestion(queston=f"您设置了多组群聊,请选择需要转发的群聊!(直接发送选择的编号):\n{string}", client=client, message=message, timeout=20)
+        config = configs[int(choose.text)]
+        # User not send button!
+        # buttons = [
+        #     (f"源群组:{cf.source}", f"{k}")
+        #     for k, cf in enumerate(configs)
+        # ]
+
+        # lines = array_chunk(buttons, 1)
+        # keyboard = ikb(lines)
+        # msg_markup: Message = await client.send_message(
+        #     chat_id=message.chat.id,
+        #     text=f"您设置了多组群聊,请选择需要转发的群聊!",
+        #     reply_markup=keyboard
+        # )
+        # callback_query = await cd.moniterCallback(msg_markup)
+        # print(callback_query.data)
+        # return
+    else:
+        config = configs
+
+    await message.reply(f"您的源群组:<code>{config.dest}</code> 目标群组:<code>{config.source}</code> \n 读取历史信息:{config.forward_history_count} 发送间隔:{config.interval_second}s\n转发状态{config.forward_history_state} **现在开始转发**")
 
     msgs: List[Message] = []
+    start_time = time.time()
 
     async for msg in client.get_chat_history(chat_id=int(config.source), limit=config.forward_history_count):
         msgs.append(msg)
@@ -435,10 +492,15 @@ async def forwardHistoryMsg(client: Client, message: Message):
         )
         await asyncio.sleep(delay=config.interval_second)
 
+    end_time = time.time()
+
+    await message.reply(f"转发完成,一共转发了{len(msgs)}条信息,耗时 {end_time-start_time}")
+
 
 # @app.on_message(filters=filters.all)
 # async def hanleAllMsg(client: Client, message: Message):
 #     print(message.text)
+
 
 def try_int(string: str) -> Union[str, int]:
     try:
@@ -455,6 +517,11 @@ async def handle_id_command(client: Client, message: Message):
     id = await client.get_chat(chat_id=try_int(ans.text))
 
     await ans.reply(f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>")
+
+
+@app.on_callback_query()
+async def handle_callback_query(client: Client, callback_query: CallbackQuery):
+    await cd.addCallback(callback_query)
 
 
 @logger.catch()
