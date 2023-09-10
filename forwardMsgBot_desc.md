@@ -79,6 +79,6 @@ git+https://github.com/usernein/pyromod.git
 ```
 
 ```shell
-docker run -d --name tg_forwardMsgUser -v /wfwork/tgbot_base/:/wkdir/ tgbot_base python -u forwardMsgUser.py
+docker run -d --name tg_forwardMsgUser -v /wfwork/tgbot_base/:/wkdir/ -v /wfwork/tgbot_base/databaseUser.db:/wkdir/database.db tgbot_base python -u forwardMsgUser.py
 
 ```
