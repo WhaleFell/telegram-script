@@ -24,6 +24,7 @@ from pathlib import Path
 import asyncio
 from loguru import logger
 import sys
+import os
 import re
 from functools import wraps
 import time
@@ -32,7 +33,7 @@ from asyncio import Queue
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
 DEBUG = True
-NAME = "bot"
+NAME = os.environ.get("NAME") or "bot"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
 DB_URL = "sqlite+aiosqlite:///database.db"
