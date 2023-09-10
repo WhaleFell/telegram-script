@@ -3,6 +3,7 @@ tgcrypto
 pydantic
 loguru
 sqlalchemy
+aiomysql
 
 # pyromod
 # pyromod fix handle channel message version

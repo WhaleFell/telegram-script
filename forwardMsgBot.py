@@ -1,8 +1,9 @@
 # ===== Sqlalchemy =====
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
+from datetime import datetime
 # ====== sqlalchemy end =====
 
 # ====== pyrogram =======
@@ -26,9 +27,13 @@ from functools import wraps
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
 DEBUG = True
+NAME = "cheryywk"
+# SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
+# 异步 mysql+aiomysql://user:password@host:port/dbname
+DB_URL = "mysql+aiomysql://root:123456@localhost/tgconfigs?charset=utf8mb4"
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
-SESSION_PATH: Path = Path(ROOTPATH, "sessions", "cheryywk.txt")
+SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
 __desc__ = """
 一个转载传话的机器人，测试版：
 /set 设置机器人
@@ -107,8 +112,7 @@ def capture_err(func):
 
 # 创建数据库引擎
 # https://github.com/talkpython/web-applications-with-fastapi-course/issues/4
-engine = create_async_engine(
-    'sqlite+aiosqlite:///database.db')  # 数据库文件名为 database.db
+engine = create_async_engine(DB_URL)
 
 
 class Base(AsyncAttrs, DeclarativeBase):
@@ -121,7 +125,7 @@ async_session = async_sessionmaker(bind=engine, expire_on_commit=False)
 
 # 定义数据模型
 class TGForwardConfig(Base):
-    __tablename__ = 'forward_config'
+    __tablename__ = NAME
 
     id: Mapped[int] = mapped_column(primary_key=True, doc="主键")
     source: Mapped[int] = mapped_column(doc="源群聊ID")
@@ -130,13 +134,17 @@ class TGForwardConfig(Base):
     interval_second: Mapped[int] = mapped_column(doc="间隔时间单位 s", default=20)
 
     remove_word: Mapped[Optional[str]] = mapped_column(
-        doc="删除的文字,用,分隔", nullable=True)
+        String(100), doc="删除的文字,用,分隔", nullable=True)
     cut_word: Mapped[Optional[str]] = mapped_column(
-        doc="截断词,用 , 分隔", nullable=True)
+        String(100), doc="截断词,用 , 分隔", nullable=True)
     skip_word: Mapped[Optional[str]] = mapped_column(
-        doc="跳过词,用 , 分隔", nullable=True)
+        String(100), doc="跳过词,用 , 分隔", nullable=True)
     add_text: Mapped[Optional[str]] = mapped_column(
-        doc="跳过语,用 , 分隔", nullable=True)
+        String(100), doc="跳过语,用 , 分隔", nullable=True)
+    # 使用 server_default 而不是 default ，因此值将由数据库本身处理。
+    create_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), default=None, nullable=False
+    )
 
 
 # 仅同步使用
@@ -205,7 +213,7 @@ class TGForwardConfigManager:
             return self.all_config_cache
 
 
-# 使用示例
+# manager 用于管理数据库
 manager = TGForwardConfigManager()
 
 
