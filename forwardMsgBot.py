@@ -1,5 +1,5 @@
 # ===== Sqlalchemy =====
-from sqlalchemy import select, insert, func
+from sqlalchemy import select, insert, func, update
 from sqlalchemy import BigInteger, String, Integer, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
@@ -32,7 +32,7 @@ from asyncio import Queue
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
 DEBUG = True
-NAME = "user628"
+NAME = "bot"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
 DB_URL = "sqlite+aiosqlite:///database.db"
@@ -222,6 +222,17 @@ class TGForwardConfigManager:
             await session.commit()
             await self.get_all_configs()
             return config
+
+    async def switch_forword_history_state(self, config: TGForwardConfig):
+        async with self.session() as session:
+            await session.execute(
+                update(TGForwardConfig)
+                .where(TGForwardConfig.create_id == config.create_id)
+                .values(
+                    forward_history_state=not config.forward_history_state)
+            )
+            await session.commit()
+            await self.get_all_configs()
 
     async def get_all_configs(self) -> List[TGForwardConfig]:
         async with self.session() as session:
@@ -495,6 +506,7 @@ async def forwardHistoryMsg(client: Client, message: Message):
     end_time = time.time()
 
     await message.reply(f"转发完成,一共转发了{len(msgs)}条信息,耗时 {end_time-start_time}")
+    await manager.switch_forword_history_state(config)
 
 
 # @app.on_message(filters=filters.all)
