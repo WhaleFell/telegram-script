@@ -10,7 +10,7 @@ from datetime import datetime
 import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 from pyrogram import Client, idle, filters
-from pyrogram.types import Message, InlineKeyboardMarkup
+from pyrogram.types import Message, InlineKeyboardMarkup, User
 from pyrogram.enums import ParseMode
 # ====== pyrogram end =====
 

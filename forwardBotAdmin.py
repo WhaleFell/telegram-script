@@ -9,6 +9,7 @@ from datetime import datetime
 # ====== pyrogram =======
 import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
+from pykeyboard import InlineButton, InlineKeyboard
 from pyrogram import Client, idle, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, CallbackQuery
 from pyrogram.enums import ParseMode
@@ -35,15 +36,12 @@ API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
 __desc__ = """
-欢迎使用爱国转载傀儡号管理系统！
-支持以下功能:
-1. 分配傀儡号
-2. 设置并管理傀儡号
-3. 查看傀儡号状态
-/start 开始
-/state 查询当前机器人池的状态
+欢迎使用爱国转载傀儡号管理系统！V2.0
 
-/id 获取ID
+用于实时转载群聊的信息、转载群聊历史信息,可用于TG群聊克隆、假公群。
+是您的营销好帮手。
+
+使用前请拉入爱国傀儡号: @wwww 到群聊/频道
 """
 # ====== Config End ======
 
@@ -158,14 +156,13 @@ def get_user_id():
 # ====== db model ======
 engine = create_async_engine(DB_URL)
 
-
-class Base(AsyncAttrs, DeclarativeBase):
-    pass
-
-
 # 会话构造器
 async_session: async_sessionmaker[AsyncSession] = async_sessionmaker(
     bind=engine, expire_on_commit=False)
+
+
+class Base(AsyncAttrs, DeclarativeBase):
+    pass
 
 
 class TGForwardConfig(Base):
@@ -205,15 +202,33 @@ class TGForwardConfig(Base):
 # ====== Text Enum ======
 
 
-class Texts(object):
-    pass
+class Content(object):
 
+    def __init__(self) -> None:
+        pass
+
+    @property
+    def START_KEYBOARD(self,) -> InlineKeyboardMarkup:
+        keyboard = InlineKeyboard()
+        keyboard.row(
+            InlineButton(text="🔄管理转载", callback_data="start_editor"),
+            InlineButton(text="➕添加转载", callback_data="start_add")
+        )
+        keyboard.row(
+            InlineButton(text="🏠返回", callback_data="return")
+        )
+
+        return keyboard
+
+
+content = Content()
 
 # ====== Text Enum end =====
 
 # ===== Handle ======
 
-@app.on_callback_query()
+
+@app.on_callback_query(filters=)
 async def handle_callback_query(client: Client, callback_query: CallbackQuery):
     await cd.addCallback(callback_query)
 
@@ -221,7 +236,7 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
 @app.on_message(filters=filters.command("start") & filters.private & ~filters.me)
 @capture_err
 async def start(client: Client, message: Message):
-    await message.reply_text(__desc__)
+    await message.reply(__desc__, reply_markup=content.START_KEYBOARD)
 
 
 @app.on_message(filters=filters.command("state") & filters.private & ~filters.me)

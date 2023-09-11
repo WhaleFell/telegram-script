@@ -10,3 +10,7 @@ aiosqlite
 # pyromod
 # pyromod fix handle channel message version
 git+https://github.com/usernein/pyromod.git
+
+# pykeyboard
+
+git+https://github.com/pystorage/pykeyboard.git
