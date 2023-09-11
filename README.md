@@ -12,6 +12,7 @@ docker build . -t tgbase
 docker run -d --name=bulkReportUser \
 -v /wfwork/telegram-script:/wkdir/ \
 -v /root/snap/脚本/举报脚本/sessions:/wkdir/sessions \
-tgbase python bulkReportUser.py -u "@shenxian"
+tgbase python -u bulkReportUser.py start "@shenxian"
 
+docker logs -f bulkReportUser
 ```

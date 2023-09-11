@@ -228,9 +228,9 @@ content = Content()
 # ===== Handle ======
 
 
-@app.on_callback_query(filters=)
-async def handle_callback_query(client: Client, callback_query: CallbackQuery):
-    await cd.addCallback(callback_query)
+# @app.on_callback_query(filters=)
+# async def handle_callback_query(client: Client, callback_query: CallbackQuery):
+#     await cd.addCallback(callback_query)
 
 
 @app.on_message(filters=filters.command("start") & filters.private & ~filters.me)

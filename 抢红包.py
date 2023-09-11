@@ -1,17 +1,11 @@
-# ===== Sqlalchemy =====
-from sqlalchemy import select, insert, String, func
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
-from datetime import datetime
-# ====== sqlalchemy end =====
-
 # ====== pyrogram =======
 import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 from pyrogram import Client, idle, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, User
 from pyrogram.enums import ParseMode
+from pyrogram.raw import functions
+from urllib.parse import urlparse, parse_qs
 # ====== pyrogram end =====
 
 from contextlib import closing, suppress
@@ -22,22 +16,23 @@ from loguru import logger
 import sys
 import re
 from functools import wraps
+import random
 
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
 DEBUG = True
-NAME = "bot"
-# SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
-# 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = "mysql+aiomysql://root:123456@localhost/tgconfigs?charset=utf8mb4"
+# 更改以下两个参数
+# txt 文件的名字
+NAME = "cheryywk"
+# 监控红包的群聊 ID 如果不知道,启动机器人后发送 /getID 就可以了
+REDPACK_GROUP_ID = -1001968860718
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
 __desc__ = """
-这是一个 telegram pyrogram 机器人单文件编程模板,个人自用
+抢红包
 """
 # ====== Config End ======
-
 # ===== logger ====
 logger.remove()
 logger.add(
@@ -91,50 +86,71 @@ async def makeSessionString(**kwargs) -> str:
     async with client as c:
         print(await c.export_session_string())
 
-app = makeClient(SESSION_PATH)
 
+app = makeClient(SESSION_PATH)
 # ====== Client maker end =======
 
 # ====== helper function  ====
 
 
-async def askQuestion(queston: str, client: Client, message: Message, timeout: int = 200) -> Union[Message, bool]:
-    try:
-        ans: Message = await message.chat.ask(queston, timeout=timeout)
-        return ans
-    except pyromod.listen.ListenerTimeout:
-        await message.reply(f"超时 {timeout}s,请重新开始")
-    except Exception as exc:
-        await message.reply(f"发送错误:\n <code>{exc}</code>")
-    return False
-
-
-def try_int(string: str) -> Union[str, int]:
-    try:
-        return int(string)
-    except:
-        return string
-
+def parse_url(url: str):
+    parsed = urlparse(url)
+    return parsed.path[1:], parse_qs(parsed.query)['start']
 
 # ====== helper function end ====
 
 # ===== Handle ======
 
 
-@app.on_message(filters=filters.command("start") & filters.private & ~filters.me)
+@app.on_message(filters=filters.command("start") & filters.private)
 @capture_err
 async def start(client: Client, message: Message):
     await message.reply_text(__desc__)
 
+# @bao5bot 5027290533
 
-@app.on_message(filters=filters.command("id") & filters.private & ~filters.me)
+
+@app.on_message(filters=filters.chat(5027290533) & filters.inline_keyboard)
+async def handle_redpacket_bot(client: Client, message: Message):
+    reply_markup = message.reply_markup.inline_keyboard[0]
+    for button in reply_markup:
+        if "点击领取红包" in button.text:
+            logger.success(f"开始抢红包！")
+            await client.request_callback_answer(message.chat.id, message.id, button.callback_data)
+            # await message.reply("红包程序已经抢了,请查看结果！")
+    logger.error("红包程序无法识别或者已经抢完了")
+    # await message.reply("红包程序无法识别或者已经抢完了")
+
+
+@app.on_message(filters=filters.chat(REDPACK_GROUP_ID) & filters.inline_keyboard)
 @capture_err
-async def handle_id_command(client: Client, message: Message):
-    ans: Message = await askQuestion("请输入用户名、邀请链接等，机器人会尝试获取id", client, message)
+async def handle_redpacket(client: Client, message: Message):
+    reply_markup = message.reply_markup.inline_keyboard[0]
+    for button in reply_markup:
+        if "抢红包 点底部开始" in button.text:
+            url = button.url
+            username, start_param = parse_url(url)
+            # await message.reply(f"发现红包!! 跳转机器人:{username} param:{start_param[0]}")
+            logger.success(f"发现红包!! 跳转机器人:{username} param:{start_param[0]}")
 
-    id = await client.get_chat(chat_id=try_int(ans.text))
+            bot_peer_id = await client.resolve_peer(username)
 
-    await ans.reply(f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>")
+            await client.invoke(
+                functions.messages.StartBot(
+                    bot=bot_peer_id,
+                    peer=bot_peer_id,
+                    start_param=start_param[0],
+                    random_id=random.randint(1000, 9999)
+                )
+            )
+
+
+@app.on_message(filters=filters.command("getID"))
+@capture_err
+async def get_ID(client: Client, message: Message):
+    await message.reply(
+        f"当前会话的ID:<code>{message.chat.id}</code>"
+    )
 
 
 # ==== Handle end =====
