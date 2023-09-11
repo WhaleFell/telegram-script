@@ -5,6 +5,7 @@ loguru
 sqlalchemy
 aiomysql
 aiosqlite
+click
 
 
 # pyromod
@@ -12,5 +13,4 @@ aiosqlite
 git+https://github.com/usernein/pyromod.git
 
 # pykeyboard
-
 git+https://github.com/pystorage/pykeyboard.git
