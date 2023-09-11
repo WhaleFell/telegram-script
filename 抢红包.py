@@ -25,7 +25,11 @@ DEBUG = True
 # txt 文件的名字
 NAME = "cheryywk"
 # 监控红包的群聊 ID 如果不知道,启动机器人后发送 /getID 就可以了
-REDPACK_GROUP_ID = -1001968860718
+# 可以监控多个群聊
+REDPACK_GROUPS_ID = [
+    -1001968860718,
+    -1001968888888
+]
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
@@ -122,7 +126,7 @@ async def handle_redpacket_bot(client: Client, message: Message):
     # await message.reply("红包程序无法识别或者已经抢完了")
 
 
-@app.on_message(filters=filters.chat(REDPACK_GROUP_ID) & filters.inline_keyboard)
+@app.on_message(filters=filters.chat(REDPACK_GROUPS_ID) & filters.inline_keyboard)
 @capture_err
 async def handle_redpacket(client: Client, message: Message):
     reply_markup = message.reply_markup.inline_keyboard[0]

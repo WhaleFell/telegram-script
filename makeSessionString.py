@@ -1,3 +1,5 @@
+# 自动生成 session string 并保存到目录下的 session 文件夹
+# 默认名字为账号的名字
 # ====== pyrogram =======
 import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
@@ -29,6 +31,7 @@ SESSION_PATH: Path = Path(ROOTPATH, "sessions")
 __desc__ = """
 自动生成 Session string
 """
+# ===== Config end ======
 
 if not SESSION_PATH.exists():
     logger.error(f"{str(SESSION_PATH)}目录不存在正在新建")
@@ -46,9 +49,9 @@ def makeClient(path: Path) -> Client:
     )
 
 
-async def makeSessionString(name: str, **kwargs) -> str:
+async def makeSessionString(**kwargs) -> str:
     client = Client(
-        name=name,
+        name="test",
         api_id=API_ID,
         api_hash=API_HASH,
         in_memory=True,
@@ -57,10 +60,19 @@ async def makeSessionString(name: str, **kwargs) -> str:
 
     async with client as c:
         string = await c.export_session_string()
-        logger.success(f"获取 {NAME} Session 成功！\n{string}")
-        Path(SESSION_PATH, f"{NAME}.txt").write_text(
+        user = await c.get_me()
+        logger.success(
+            f"""
+-------login success--------
+username: {user.first_name}
+type: {"Bot" if user.is_bot else "User"}
+@{user.username}
+----------------------------
+"""
+        )
+        logger.success(f"获取 {user.username} Session 成功！\n{string}")
+        Path(SESSION_PATH, f"{user.username}.txt").write_text(
             data=string, encoding="utf8")
 
 if __name__ == "__main__":
-    NAME = input(">> 请输入保存的 Session 名字:")
-    asyncio.run(makeSessionString(NAME))
+    asyncio.run(makeSessionString())
