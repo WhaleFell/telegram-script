@@ -3,7 +3,8 @@
 # 使用方法：
 # 添加用户账号,会保存 session 字符串到 session 目录
 # python reportBlockUser.py dump_session 名字
-# 设置完需要举报的账号后, python reportBlockUser.py start 开始举报
+# 更新: 在命令行传递需要举报的账号,并同时运行多个协程来加速举报
+# python bulkReportUser.py start "@shenxian"
 ##########
 # 需要举报的账号
 import asyncio
@@ -18,7 +19,7 @@ import glob
 import os
 from loguru import logger
 import sys
-report_user = "@linxi"
+report_user = "@shenxian"
 # https://docs.pyrogram.org/topics/advanced-usage#invoking-functions
 # https://click-docs-zh-cn.readthedocs.io/zh/latest/
 
@@ -99,50 +100,68 @@ def readSession(name: str) -> str:
 
 
 async def reportUser(client: Client, username: str):
-    try:
-        me = await client.get_me()
-        logger.success(f"@{me.username} login success!")
-        # Report a peer for violation of telegram’s Terms of Service.
-        peer_id = await client.resolve_peer(username)
-        logger.info(f"report peer type:{type(peer_id)})")
-        await client.invoke(
-            functions.account.report_peer.ReportPeer(
-                peer=peer_id,
-                reason=types.InputReportReasonSpam(),
-                message=f"""
-I am writing to report a user on Telegram by the username of @{username} for frequently sending spam messages. The user has been consistently sending unsolicited messages to several users, causing inconvenience and disturbance.
-I kindly request that immediate action be taken to address this issue and ensure that such behavior is not tolerated on the platform.
-Thank you for your attention to this matter.
-"""
+    while True:
+        try:
+            me = await client.get_me()
+            logger.success(f"@{me.username} login success!")
+            # Report a peer for violation of telegram’s Terms of Service.
+            peer_id = await client.resolve_peer(username)
+            logger.info(f"report peer type:{type(peer_id)})")
+            await client.invoke(
+                functions.account.report_peer.ReportPeer(
+                    peer=peer_id,
+                    reason=types.InputReportReasonSpam(),
+                    message=f"""
+    I am writing to report a user on Telegram by the username of @{username} for frequently sending spam messages. The user has been consistently sending unsolicited messages to several users, causing inconvenience and disturbance.
+    I kindly request that immediate action be taken to address this issue and ensure that such behavior is not tolerated on the platform.
+    Thank you for your attention to this matter.
+    """
+                )
             )
-        )
-        logger.success(f"@{me.username} report {username} success!")
+            logger.success(f"@{me.username} report {username} success!")
 
-    except Exception as e:
-        logger.exception(e)
-    finally:
-        await asyncio.sleep(5)
+        except Exception as e:
+            # logger.exception(e)
+            logger.error(f"举报失败哦！{e}")
+        finally:
+            await asyncio.sleep(5)
 
 
-async def main():
-    global reportUser
+async def main(username):
+    global report_user
     clients = loadClientsInFolder()
 
-    for _ in range(100):
-        for client in clients:
-            try:
-                async with client:
-                    await reportUser(client, report_user)
-            except:
-                logger.error(f"@{client.name}死了")
+    tasks = []
+
+    for client in clients:
+        try:
+            await client.start()
+            me = await client.get_me()
+            logger.success(f"@{me.username} login success!")
+        except Exception as e:
+            logger.error(f"{client.name}登录失败了")
+            continue
+
+        tasks.append(
+            reportUser(client, username=username)
+        )
+
+    print("s11s11", tasks)
+    await asyncio.gather(*tasks)
+
+    await idle()
+
+    for client in clients:
+        await client.stop()
 
 
 @click.command(help="main runnning loop")
-def start():
+@click.argument("username")
+def start(username: str):
     loop = asyncio.get_event_loop()
     with closing(loop):
         with suppress(asyncio.exceptions.CancelledError):
-            loop.run_until_complete(main())
+            loop.run_until_complete(main(username))
 
         loop.run_until_complete(asyncio.sleep(0.5))  # task cancel
 
