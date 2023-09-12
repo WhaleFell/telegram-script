@@ -15,4 +15,12 @@ docker run -d --name=bulkReportUser \
 tgbase python -u bulkReportUser.py start "@shenxian"
 
 docker logs -f bulkReportUser
+
+
+docker run -d --name=getRedpacket \
+-v /wfwork/telegram-script:/wkdir/ \
+-v /root/snap/脚本/举报脚本/sessions:/wkdir/sessions \
+tgbase python -u 抢红包.py
+
+
 ```

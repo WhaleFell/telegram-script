@@ -64,14 +64,15 @@ async def makeSessionString(**kwargs) -> str:
         logger.success(
             f"""
 -------login success--------
-username: {user.first_name}
+username: {user.first_name+user.last_name}
 type: {"Bot" if user.is_bot else "User"}
 @{user.username}
 ----------------------------
 """
         )
-        logger.success(f"获取 {user.username} Session 成功！\n{string}")
-        Path(SESSION_PATH, f"{user.username}.txt").write_text(
+        logger.success(
+            f"获取 {user.first_name+user.last_name} Session 成功！\n{string}")
+        Path(SESSION_PATH, f"{user.first_name+user.last_name}.txt").write_text(
             data=string, encoding="utf8")
 
 if __name__ == "__main__":
