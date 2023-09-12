@@ -76,4 +76,13 @@ type: {"Bot" if user.is_bot else "User"}
             data=string, encoding="utf8")
 
 if __name__ == "__main__":
-    asyncio.run(makeSessionString())
+    i = 0
+    while True:
+        i += 1
+        logger.info(f"正在申请第{i}个账号")
+        try:
+            asyncio.run(makeSessionString())
+        except KeyboardInterrupt:
+            logger.success("退出！！")
+        except Exception as e:
+            logger.error(f"生成时出现错误！{e}")
