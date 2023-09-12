@@ -2,6 +2,7 @@
 import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 from pyrogram import Client, idle, filters
+from pyrogram.handlers import MessageHandler
 from pyrogram.types import Message, InlineKeyboardMarkup, User
 from pyrogram.enums import ParseMode
 from pyrogram.raw import functions
@@ -17,6 +18,8 @@ import sys
 import re
 from functools import wraps
 import random
+import os
+import glob
 
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
@@ -91,7 +94,27 @@ async def makeSessionString(**kwargs) -> str:
         print(await c.export_session_string())
 
 
-app = makeClient(SESSION_PATH)
+def loadClientsInFolder() -> List[Client]:
+    session_folder = Path(ROOTPATH, "sessions")
+    file_paths = glob.glob(os.path.join(session_folder.as_posix(), "*.txt"))
+
+    file_content_list = []
+    for file_path in file_paths:
+        with open(file_path, "r", encoding="utf-8") as f:
+            file_content = f.read()
+            file_name = Path(file_path).stem
+            file_content_list.append((file_name, file_content))
+
+    return [
+        Client(
+            name=name, session_string=session,
+            api_id=API_ID, api_hash=API_HASH, in_memory=True
+        )
+        for name, session in file_content_list
+    ]
+
+
+# app = makeClient(SESSION_PATH)
 # ====== Client maker end =======
 
 # ====== helper function  ====
@@ -106,7 +129,7 @@ def parse_url(url: str):
 # ===== Handle ======
 
 
-@app.on_message(filters=filters.command("start") & filters.private)
+# @app.on_message(filters=filters.command("start") & filters.private)
 @capture_err
 async def start(client: Client, message: Message):
     await message.reply_text(__desc__)
@@ -114,19 +137,19 @@ async def start(client: Client, message: Message):
 # @bao5bot 5027290533
 
 
-@app.on_message(filters=filters.chat(5027290533) & filters.inline_keyboard)
+# @app.on_message(filters=filters.chat(5027290533) & filters.inline_keyboard)
 async def handle_redpacket_bot(client: Client, message: Message):
     reply_markup = message.reply_markup.inline_keyboard[0]
     for button in reply_markup:
         if "点击领取红包" in button.text:
-            logger.success(f"开始抢红包！")
+            logger.success(f"{client.name} 开始抢红包！")
             await client.request_callback_answer(message.chat.id, message.id, button.callback_data)
             # await message.reply("红包程序已经抢了,请查看结果！")
-    logger.error("红包程序无法识别或者已经抢完了")
+    logger.error(f"{client.name} 红包程序无法识别或者已经抢完了")
     # await message.reply("红包程序无法识别或者已经抢完了")
 
 
-@app.on_message(filters=filters.chat(REDPACK_GROUPS_ID) & filters.inline_keyboard)
+# @app.on_message(filters=filters.chat(REDPACK_GROUPS_ID) & filters.inline_keyboard)
 @capture_err
 async def handle_redpacket(client: Client, message: Message):
     reply_markup = message.reply_markup.inline_keyboard[0]
@@ -135,7 +158,8 @@ async def handle_redpacket(client: Client, message: Message):
             url = button.url
             username, start_param = parse_url(url)
             # await message.reply(f"发现红包!! 跳转机器人:{username} param:{start_param[0]}")
-            logger.success(f"发现红包!! 跳转机器人:{username} param:{start_param[0]}")
+            logger.success(
+                f"{client.name} 发现红包!! 跳转机器人:{username} param:{start_param[0]}")
 
             bot_peer_id = await client.resolve_peer(username)
 
@@ -149,7 +173,7 @@ async def handle_redpacket(client: Client, message: Message):
             )
 
 
-@app.on_message(filters=filters.command("getID"))
+# @app.on_message(filters=filters.command("getID"))
 @capture_err
 async def get_ID(client: Client, message: Message):
     await message.reply(
@@ -161,28 +185,51 @@ async def get_ID(client: Client, message: Message):
 
 
 async def main():
-    global app
-    await app.start()
-    user = await app.get_me()
+    apps = loadClientsInFolder()
 
-    # ===== Test Code =======
-    # chat_id = await app.get_chat("@w2ww2w2w")
-    # print(chat_id)
+    for app in apps:
 
-    # ======== Test Code end ==========
+        await app.start()
+        user = await app.get_me()
 
-    logger.success(
-        f"""
--------login success--------
-username: {user.first_name}
-type: {"Bot" if user.is_bot else "User"}
-@{user.username}
-----------------------------
-"""
-    )
+        # ===== Test Code =======
+        # chat_id = await app.get_chat("@w2ww2w2w")
+        # print(chat_id)
+
+        # ======== Test Code end ==========
+
+        # ======= Add handle ========
+        app.add_handler(
+            MessageHandler(start, filters=filters.command(
+                "start") & filters.private)
+        )
+        app.add_handler(
+            MessageHandler(handle_redpacket_bot, filters=filters.chat(
+                5027290533) & filters.inline_keyboard)
+        )
+        app.add_handler(
+            MessageHandler(handle_redpacket, filters=filters.chat(
+                REDPACK_GROUPS_ID) & filters.inline_keyboard)
+        )
+        app.add_handler(
+            MessageHandler(get_ID, filters=filters.command("getID"))
+        )
+        # ======= Add Handle end =====
+
+        logger.success(
+            f"""
+    -------login success--------
+    username: {user.first_name}
+    type: {"Bot" if user.is_bot else "User"}
+    @{user.username}
+    ----------------------------
+    """
+        )
 
     await idle()
-    await app.stop()
+
+    for app in apps:
+        await app.stop()
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
