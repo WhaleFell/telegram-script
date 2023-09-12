@@ -61,6 +61,11 @@ async def makeSessionString(**kwargs) -> str:
     async with client as c:
         string = await c.export_session_string()
         user = await c.get_me()
+        if user.first_name == None:
+            user.first_name = "None"
+        if user.last_name == None:
+            user.last_name = "None"
+
         logger.success(
             f"""
 -------login success--------
