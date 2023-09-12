@@ -84,5 +84,6 @@ if __name__ == "__main__":
             asyncio.run(makeSessionString())
         except KeyboardInterrupt:
             logger.success("退出！！")
+            sys.exit(0)
         except Exception as e:
             logger.error(f"生成时出现错误！{e}")
