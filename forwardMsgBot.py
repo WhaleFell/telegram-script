@@ -380,7 +380,6 @@ async def set(client: Client, message: Message):
     await manager.saveConfig(config)
     await ans.reply(text=Cover.set_result(config))
 
-
 @app.on_message(filters=filters.command("getID") & ~filters.me)
 @capture_err
 async def get_ID(client: Client, message: Message):
