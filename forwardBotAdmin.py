@@ -15,10 +15,10 @@ from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 import pyromod
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.orm import sessionmaker, DeclarativeBase,make_transient
 from sqlalchemy.orm import Mapped, mapped_column, relationship, lazyload
 from sqlalchemy import select, insert, String, func, Boolean, text, ForeignKey,delete
-puppet_id = str(1212)
+puppet_id = str(6398941159) # 傀儡号 ID
 # ===== Sqlalchemy =====
 # ====== sqlalchemy end =====
 
@@ -417,10 +417,16 @@ class Content(object):
 """
 
     def RESULT(self, config: TGForwardConfig) -> str:
+        if config.forward_history_state:
+            state = "💔历史信息做法未完成"
+        else:
+            state = "🧡历史信息转发完成!"
+
         return f"""
 数据保存成功:
 任务备注: {self.addCode(config.comment)}
 任务添加时间: {self.addCode(config.create_at)}
+任务转发状态: {state}
 id: <code>{self.addCode(config.task_id)} // 任务id
 来源群组：{self.addCode(config.source)}
 目标群组：{self.addCode(config.dest)}
@@ -459,9 +465,10 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
             comment: Message = await askQuestion(queston="请输入您配置的备注(方便管理)", message=callback_query.message)
             if comment:
                 config = parser(ans.text, message=comment)
-                config_back = config
                 await manager.saveConfig(config)
-                await ans.reply(f"配置保存成功!\n{content.RESULT(config_back)}", reply_markup=content.RETURN_KEYBOARD)
+                # 将对象转换为无会话状态
+                make_transient(config)
+                await ans.reply(f"配置保存成功!\n{content.RESULT(config)}", reply_markup=content.RETURN_KEYBOARD)
         return
 
     elif callback_query.data == CallBackData.START_ACCOUNT:
@@ -559,6 +566,8 @@ type: {"Bot" if user.is_bot else "User"}
 
     await idle()
     await app.stop()
+    # 数据库
+    await engine.dispose()
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
