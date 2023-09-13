@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessio
 from sqlalchemy.orm import sessionmaker, DeclarativeBase,make_transient
 from sqlalchemy.orm import Mapped, mapped_column, relationship, lazyload
 from sqlalchemy import select, insert, String, func, Boolean, text, ForeignKey,delete
+import os
 puppet_id = str(6398941159) # 傀儡号 ID
 # ===== Sqlalchemy =====
 # ====== sqlalchemy end =====
@@ -29,10 +30,10 @@ puppet_id = str(6398941159) # 傀儡号 ID
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
 DEBUG = True
-NAME = "bot"
+NAME = os.environ.get("NAME") or "bot"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = "mysql+aiomysql://root:123456@localhost/tgforward?charset=utf8mb4"
+DB_URL = os.environ.get("DB_URL") or "mysql+aiomysql://root:123456@localhost/tgforward?charset=utf8mb4"
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
@@ -40,10 +41,14 @@ __desc__ = """
 欢迎使用爱国转载傀儡号管理系统!V2.0
 
 用于实时转载群聊的信息、转载群聊历史信息,可用于TG群聊克隆、假公群。
+纯TG配置,傻瓜都会配!
 是您的营销好帮手。
 
-使用前请拉入爱国傀儡号: @wwww 到群聊/频道
-/reg 注册
+使用前请拉入爱国傀儡号: @cheryywk 到群聊/频道
+
+如果您不知道群/频道 ID 请将傀儡号拉入群后输入 /getID
+/start 开始
+/reg 注册专属账号
 """
 # ====== Config End ======
 

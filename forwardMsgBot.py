@@ -37,7 +37,7 @@ DEBUG = True
 NAME = os.environ.get("NAME") or "cheryywk"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = "mysql+aiomysql://root:123456@localhost:3306/tgforward"
+DB_URL = os.environ.get("DB_URL") or "mysql+aiomysql://root:123456@localhost/tgforward?charset=utf8mb4"
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
@@ -82,7 +82,7 @@ def capture_err(func):
 
 # 创建数据库引擎
 # https://github.com/talkpython/web-applications-with-fastapi-course/issues/4
-engine = create_async_engine(DB_URL)
+engine = create_async_engine(DB_URL, pool_pre_ping=True, pool_recycle=600)
 
 
 class Base(AsyncAttrs, DeclarativeBase):
@@ -90,7 +90,7 @@ class Base(AsyncAttrs, DeclarativeBase):
 
 
 # 会话构造器
-engine = create_async_engine(DB_URL, pool_pre_ping=True, pool_recycle=600)
+async_session = async_sessionmaker(bind=engine, expire_on_commit=False)
 
 user = User(id=212121212)
 

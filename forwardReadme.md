@@ -35,3 +35,32 @@ create_at DATETIME NOT NULL DEFAULT NOW() COMMENT '创建时间',
 create_id VARCHAR(20) COMMENT '设置机器人的用户ID'
 ) COMMENT '转载配置表';
 ```
+
+## 运行
+
+配置 mysql 数据库
+
+```shell
+DB_URL=mysql+aiomysql://root:lovehyy@localhost:3388/tgforward?charset=utf8mb4
+
+docker pull mysql:5.7
+
+docker run --privileged=true -d --name=mysql5.7 \
+-p 3388:3306 \
+-e MYSQL_ROOT_PASSWORD=lovehyy \
+-e MYSQL_DATABASE=tgforward \
+-v /wfwork/mysql/data:/var/lib/mysql \
+-v /wfwork/mysql/conf:/etc/mysql/conf.d \
+-v /wfwork/mysql/logs:/var/log/mysql \
+mysql:5.7
+
+docker exec -it mysql5.7 bash
+mysql -u root -p
+
+# root remote login
+GRANT ALL PRIVILEGS ON . TO 'root'@'%' IDENTIFIED BY 'lovehyy' WITH GRANT OPTION;
+# 刷新权限
+FLUSH PRIVILEGES;
+
+
+```
