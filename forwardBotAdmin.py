@@ -159,7 +159,7 @@ def get_user_id():
 # ====== helper function end ====
 
 # ====== db model ======
-engine = create_async_engine(DB_URL)
+engine = create_async_engine(DB_URL,pool_pre_ping=True,pool_recycle=600)
 
 # 会话构造器
 async_session: async_sessionmaker[AsyncSession] = async_sessionmaker(
@@ -337,13 +337,14 @@ def parser(string: str, message: Message) -> "TGForwardConfig":
 class CallBackData():
     RETURN = "return"
 
-    START_EDITOR = "start/editor"
-    START_ADD = "start/add"
-    START_ACCOUNT = "start/account"
+    START_EDITOR = "start/editor/"
+    START_ADD = "start/add/"
+    START_ACCOUNT = "start/account/"
 
     QUERY_PREFIX = "checkQuery/"
     QUERY_EDITOR = "query/editor/"
     QUERY_DELETED = "query/deleted/"
+    QUERY_FORWARD = "query/forward/"
 
 
 class Content(object):
@@ -373,13 +374,14 @@ class Content(object):
         )
         return keyboard
 
-    def QUERY_KEYBOARD(self,id:str) -> InlineKeyboardMarkup:
-        id = str(id)
+    def QUERY_KEYBOARD(self,task_id:Union[int,str]) -> InlineKeyboardMarkup:
+        task_id = str(task_id)
         keyboard = InlineKeyboard()
         keyboard.row(
             # TODO: support editor config
-            # InlineButton(text="💊编辑", callback_data=CallBackData.QUERY_EDITOR+id),
-            InlineButton(text="❌删除", callback_data=CallBackData.QUERY_DELETED+id),
+            # InlineButton(text="💊编辑", callback_data=CallBackData.QUERY_EDITOR+id)
+            InlineButton(text="💫开始转发历史信息", callback_data=CallBackData.QUERY_FORWARD+task_id),
+            InlineButton(text="❌删除", callback_data=CallBackData.QUERY_DELETED+task_id),
         )
 
         keyboard.row(
@@ -418,9 +420,9 @@ class Content(object):
 
     def RESULT(self, config: TGForwardConfig) -> str:
         if config.forward_history_state:
-            state = "💔历史信息做法未完成"
-        else:
             state = "🧡历史信息转发完成!"
+        else:
+            state = "💔历史信息做法未完成"
 
         return f"""
 数据保存成功:
@@ -454,6 +456,7 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
         await callback_query.message.edit(__desc__, reply_markup=content.START_KEYBOARD)
         return
 
+    # 添加转载
     elif callback_query.data == CallBackData.START_ADD:
         if not await manager.selectUserByID(id=callback_query.from_user.id):
             await callback_query.message.edit("对不起小姐,没有找到您的账号无法添加任务！请输入 /reg 注册吧!", reply_markup=content.RETURN_KEYBOARD)
@@ -471,6 +474,7 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
                 await ans.reply(f"配置保存成功!\n{content.RESULT(config)}", reply_markup=content.RETURN_KEYBOARD)
         return
 
+    # 账号信息
     elif callback_query.data == CallBackData.START_ACCOUNT:
         user = await manager.selectUserByID(id=callback_query.from_user.id)
         if user:
@@ -479,6 +483,7 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
         await callback_query.message.edit("对不起小姐,没有找到您的账号请输入 /reg 注册吧!", reply_markup=content.RETURN_KEYBOARD)
         return
 
+    # 编辑管理转载
     elif callback_query.data == CallBackData.START_EDITOR:
         configs = await manager.selectUserConfigs(id=callback_query.from_user.id)
         if configs:
@@ -494,6 +499,7 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
         else:
             await callback_query.message.edit("对不起小姐,没有找到您配置的任何信息,请先配置哦!", reply_markup=content.RETURN_KEYBOARD)
 
+    # 查询配置
     elif callback_query.data.startswith(CallBackData.QUERY_PREFIX):
         task_id = callback_query.data.split("/")[-1]
 
@@ -501,10 +507,19 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
 
         await callback_query.message.edit(f"您{config.comment}的配置信息:\n{content.RESULT(config)}", reply_markup=content.QUERY_KEYBOARD(config.task_id))
 
+    # 删除转载
     elif callback_query.data.startswith(CallBackData.QUERY_DELETED):
         task_id = callback_query.data.split("/")[-1]
         config = await manager.deleteConfigByTaskid(task_id=task_id)
-        await callback_query.message.edit("任务已成功删除！",reply_markup=content.RETURN_KEYBOARD)
+        await callback_query.message.edit("小姐您任务已成功删除！",reply_markup=content.RETURN_KEYBOARD)
+    
+    # 转发历史信息
+    elif callback_query.data.startswith(CallBackData.QUERY_FORWARD):
+        task_id = callback_query.data.split("/")[-1]
+        await client.send_message(
+            chat_id=int(puppet_id),
+            text=f"/forwardHistoryMsg {task_id}"
+        )
 
 
     else:

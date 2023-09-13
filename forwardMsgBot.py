@@ -90,7 +90,7 @@ class Base(AsyncAttrs, DeclarativeBase):
 
 
 # 会话构造器
-async_session = async_sessionmaker(bind=engine, expire_on_commit=False)
+engine = create_async_engine(DB_URL, pool_pre_ping=True, pool_recycle=600)
 
 user = User(id=212121212)
 
@@ -180,7 +180,7 @@ class TGForwardConfigManager:
         async with self.session() as session:
             await session.execute(
                 update(TGForwardConfig)
-                .where(TGForwardConfig.create_id == config.create_id)
+                .where(TGForwardConfig.task_id == config.task_id)
                 .where(TGForwardConfig.user_id == get_user_id())
                 .values(
                     forward_history_state=not config.forward_history_state)
@@ -196,6 +196,7 @@ class TGForwardConfigManager:
                     TGForwardConfig.puppet_id == get_user_id()
                 )
             )
+            await session.commit()
             self.all_config_cache = configs.scalars().all()
 
             return self.all_config_cache
@@ -353,12 +354,13 @@ async def handle_ch_gp(client: Client, message: Message):
         #         return await client.send_message(chat_id=config.source, text=text)
 
 
-@app.on_message(filters=filters.command("/forwardHistoryMsg") & filters.private & ~filters.me)
+@app.on_message(filters=filters.command("forwardHistoryMsg") & filters.private)
 @capture_err
 async def forwardHistoryMsg(client: Client, message: Message):
+    logger.info("激活！")
     task_id = message.command[1]
 
-    config: TGForwardConfig = manager.selectConfigByTaskid(task_id=task_id)
+    config: TGForwardConfig = await manager.selectConfigByTaskid(task_id=task_id)
 
     # if not config:
     #     return await message.reply("没有找到您设置的信息,请使用 /set 设置!")
