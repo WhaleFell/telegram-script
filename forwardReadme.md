@@ -62,5 +62,18 @@ GRANT ALL PRIVILEGS ON . TO 'root'@'%' IDENTIFIED BY 'lovehyy' WITH GRANT OPTION
 # 刷新权限
 FLUSH PRIVILEGES;
 
+docker run -d --name=forward_admin_bot \
+-e NAME="bot" \
+-e DB_URL="mysql+aiomysql://root:lovehyy@172.17.0.2:3306/tgforward?charset=utf8mb4" \
+-v /wfwork/tgbot_base/telegram-script/forwardBotAdmin.py:/wkdir/main.py \
+-v /wfwork/tgbot_base/telegram-script/sessions:/wkdir/sessions \
+tgbot_base python -u main.py
 
+
+docker run -d --name=forward_puppet \
+-e NAME="cheryywk" \
+-e DB_URL="mysql+aiomysql://root:lovehyy@172.17.0.2:3306/tgforward?charset=utf8mb4" \
+-v /wfwork/tgbot_base/telegram-script/forwardMsgBot.py:/wkdir/main.py \
+-v /wfwork/tgbot_base/telegram-script/sessions:/wkdir/sessions \
+tgbot_base python -u main.py
 ```

@@ -550,7 +550,7 @@ async def start(client: Client, message: Message):
 @app.on_message(filters=filters.command("id") & filters.private & ~filters.me)
 @capture_err
 async def handle_id_command(client: Client, message: Message):
-    ans: Message = await askQuestion("请输入用户名、邀请链接等，机器人会尝试获取id", client, message)
+    ans: Message = await askQuestion("请输入用户名、邀请链接等，机器人会尝试获取id",message=message)
 
     id = await client.get_chat(chat_id=try_int(ans.text))
 

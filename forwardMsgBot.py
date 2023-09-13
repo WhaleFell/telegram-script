@@ -37,7 +37,8 @@ DEBUG = True
 NAME = os.environ.get("NAME") or "cheryywk"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = os.environ.get("DB_URL") or "mysql+aiomysql://root:123456@localhost/tgforward?charset=utf8mb4"
+DB_URL = os.environ.get(
+    "DB_URL") or "mysql+aiomysql://root:123456@localhost/tgforward?charset=utf8mb4"
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
@@ -251,7 +252,7 @@ async def start(client: Client, message: Message):
     await message.reply_text(__desc__)
 
 
-async def askQuestion(queston: str, client: Client, message: Message, timeout: int = 200) -> Union[Message, bool]:
+async def askQuestion(queston: str, message: Message, timeout: int = 200) -> Union[Message, bool]:
     try:
         ans: Message = await message.chat.ask(queston, timeout=timeout)
         return ans
