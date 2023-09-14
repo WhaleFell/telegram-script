@@ -11,6 +11,7 @@ import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 from pyrogram import Client, idle, filters
 from pyrogram.types import Message, InlineKeyboardMarkup
+from pyrogram.handlers import MessageHandler
 from pyrogram.enums import ParseMode
 # ====== pyrogram end =====
 
@@ -22,6 +23,9 @@ from loguru import logger
 import sys
 import re
 from functools import wraps
+import os
+import sys
+import glob
 
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
@@ -90,6 +94,27 @@ async def makeSessionString(**kwargs) -> str:
 
     async with client as c:
         print(await c.export_session_string())
+
+
+def loadClientsInFolder() -> List[Client]:
+    session_folder = Path(ROOTPATH, "sessions")
+    file_paths = glob.glob(os.path.join(session_folder.as_posix(), "*.txt"))
+
+    file_content_list = []
+    for file_path in file_paths:
+        with open(file_path, "r", encoding="utf-8") as f:
+            file_content = f.read()
+            file_name = Path(file_path).stem
+            file_content_list.append((file_name, file_content))
+
+    return [
+        Client(
+            name=name, session_string=session,
+            api_id=API_ID, api_hash=API_HASH, in_memory=True
+        )
+        for name, session in file_content_list
+    ]
+
 
 app = makeClient(SESSION_PATH)
 
