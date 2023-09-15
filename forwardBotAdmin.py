@@ -430,7 +430,7 @@ class Content(object):
         if config.forward_history_state:
             state = "🧡历史信息转发完成!"
         else:
-            state = "💔历史信息做法未完成"
+            state = "💔历史信息转发未完成"
 
         return f"""
 数据保存成功:
