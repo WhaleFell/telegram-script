@@ -209,9 +209,9 @@ class TGForwardConfigManager:
             result = await session.scalar(
                 select(TGForwardConfig)
                 .where(TGForwardConfig.task_id == task_id)
-                # .where(
-                #     TGForwardConfig.user_id == get_user_id()
-                # )
+                .where(
+                    TGForwardConfig.puppet_id == get_user_id()
+                )
             )
 
             return result
