@@ -204,6 +204,7 @@ class TGForwardConfigManager:
 
     async def selectConfigByTaskid(self, task_id: int) -> Union[TGForwardConfig, None]:
         """根据任务 ID 选择任务"""
+        task_id = int(task_id)
         async with self.session() as session:
             result = await session.scalar(
                 select(TGForwardConfig)
@@ -362,6 +363,8 @@ async def forwardHistoryMsg(client: Client, message: Message):
     task_id = message.command[1]
 
     config: TGForwardConfig = await manager.selectConfigByTaskid(task_id=task_id)
+    if not config:
+        return await message.reply(f"没有找到您设置的信息.{task_id}")
 
     # if not config:
     #     return await message.reply("没有找到您设置的信息,请使用 /set 设置!")
