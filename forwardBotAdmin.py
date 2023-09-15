@@ -19,7 +19,7 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase, make_transient
 from sqlalchemy.orm import Mapped, mapped_column, relationship, lazyload
 from sqlalchemy import select, insert, String, func, Boolean, text, ForeignKey, delete
 import os
-puppet_id = str(6398941159)  # 傀儡号 ID
+puppet_id = str(6353451026)  # 傀儡号 ID
 # ===== Sqlalchemy =====
 # ====== sqlalchemy end =====
 
