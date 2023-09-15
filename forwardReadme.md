@@ -70,7 +70,7 @@ docker run -d --name=forward_admin_bot \
 tgbot_base python -u main.py
 
 
-docker run -d --name=forward_puppet \
+docker run -d --name=forward_puppet_uesr628 \
 -e NAME="user628" \
 -e DB_URL="mysql+aiomysql://root:lovehyy@172.17.0.2:3306/tgforward?charset=utf8mb4" \
 -v /wfwork/tgbot_base/telegram-script/forwardMsgBot.py:/wkdir/main.py \
