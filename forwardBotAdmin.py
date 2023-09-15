@@ -596,9 +596,9 @@ type: {"Bot" if user.is_bot else "User"}
 
     await app.set_bot_commands(
         [
-            BotCommand("/start", "开始页面"),
-            BotCommand("/reg", "注册账号"),
-            BotCommand("/id", "尝试获取 ID")
+            BotCommand("start", "开始页面"),
+            BotCommand("reg", "注册账号"),
+            BotCommand("id", "尝试获取 ID")
         ]
     )
 
