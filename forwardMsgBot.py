@@ -182,7 +182,7 @@ class TGForwardConfigManager:
             await session.execute(
                 update(TGForwardConfig)
                 .where(TGForwardConfig.task_id == config.task_id)
-                .where(TGForwardConfig.user_id == get_user_id())
+                .where(TGForwardConfig.puppet_id == get_user_id())
                 .values(
                     forward_history_state=not config.forward_history_state)
             )
