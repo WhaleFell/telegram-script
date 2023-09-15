@@ -80,6 +80,7 @@ type: {"Bot" if user.is_bot else "User"}
         Path(SESSION_PATH, f"{user.first_name+user.last_name}.txt").write_text(
             data=string, encoding="utf8")
 
+
 if __name__ == "__main__":
     i = 0
     while True:
