@@ -15,11 +15,11 @@ from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 import pyromod
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
-from sqlalchemy.orm import sessionmaker, DeclarativeBase,make_transient
+from sqlalchemy.orm import sessionmaker, DeclarativeBase, make_transient
 from sqlalchemy.orm import Mapped, mapped_column, relationship, lazyload
-from sqlalchemy import select, insert, String, func, Boolean, text, ForeignKey,delete
+from sqlalchemy import select, insert, String, func, Boolean, text, ForeignKey, delete
 import os
-puppet_id = str(6398941159) # 傀儡号 ID
+puppet_id = str(6398941159)  # 傀儡号 ID
 # ===== Sqlalchemy =====
 # ====== sqlalchemy end =====
 
@@ -33,18 +33,19 @@ DEBUG = True
 NAME = os.environ.get("NAME") or "bot"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = os.environ.get("DB_URL") or "mysql+aiomysql://root:123456@localhost/tgforward?charset=utf8mb4"
+DB_URL = os.environ.get(
+    "DB_URL") or "mysql+aiomysql://root:123456@localhost/tgforward?charset=utf8mb4"
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
 __desc__ = """
-欢迎使用爱国转载傀儡号管理系统!V2.0
+欢迎使用聚能转载傀儡号管理系统!V2.0
 
 用于实时转载群聊的信息、转载群聊历史信息,可用于TG群聊克隆、假公群。
 纯TG配置,傻瓜都会配!
 是您的营销好帮手。
 
-使用前请拉入爱国傀儡号: @cheryywk 到群聊/频道
+使用前请拉入聚能傀儡号: @cheryywk 到群聊/频道
 
 如果您不知道群/频道 ID 请将傀儡号拉入群后输入 /getID
 /start 开始
@@ -164,7 +165,7 @@ def get_user_id():
 # ====== helper function end ====
 
 # ====== db model ======
-engine = create_async_engine(DB_URL,pool_pre_ping=True,pool_recycle=600)
+engine = create_async_engine(DB_URL, pool_pre_ping=True, pool_recycle=600)
 
 # 会话构造器
 async_session: async_sessionmaker[AsyncSession] = async_sessionmaker(
@@ -213,7 +214,8 @@ class TGForwardConfig(Base):
     )
     source: Mapped[str] = mapped_column(String(20), comment="源群聊ID")
     dest: Mapped[str] = mapped_column(String(20), comment="目标群聊ID")
-    forward_history_count: Mapped[int] = mapped_column(comment="转发历史信息的数量",default=10)
+    forward_history_count: Mapped[int] = mapped_column(
+        comment="转发历史信息的数量", default=10)
     forward_history_state: Mapped[bool] = mapped_column(
         Boolean(), comment="转发历史信息的状态", nullable=True, default=False)
     interval_second: Mapped[int] = mapped_column(
@@ -277,8 +279,8 @@ class SQLManager(object):
                 return result.configs
             else:
                 return None
-            
-    async def selectConfigByTaskid(self,task_id:int)->Union[TGForwardConfig,None]:
+
+    async def selectConfigByTaskid(self, task_id: int) -> Union[TGForwardConfig, None]:
         """根据任务 ID 选择任务"""
         async with self.AsyncSessionMaker() as session:
             result = await session.scalar(
@@ -287,8 +289,8 @@ class SQLManager(object):
             )
 
             return result
-    
-    async def deleteConfigByTaskid(self,task_id:int)->None:
+
+    async def deleteConfigByTaskid(self, task_id: int) -> None:
         """根据任务 ID 删除任务"""
         async with self.AsyncSessionMaker() as session:
             await session.execute(
@@ -317,7 +319,6 @@ def parser(string: str, message: Message) -> "TGForwardConfig":
             if not value and required:
                 raise ValueError(f'{key} is required but missing')
             data[key] = value
-
 
     config = TGForwardConfig(
         forward_history_count=int(data['转载数量']),
@@ -379,14 +380,16 @@ class Content(object):
         )
         return keyboard
 
-    def QUERY_KEYBOARD(self,task_id:Union[int,str]) -> InlineKeyboardMarkup:
+    def QUERY_KEYBOARD(self, task_id: Union[int, str]) -> InlineKeyboardMarkup:
         task_id = str(task_id)
         keyboard = InlineKeyboard()
         keyboard.row(
             # TODO: support editor config
             # InlineButton(text="💊编辑", callback_data=CallBackData.QUERY_EDITOR+id)
-            InlineButton(text="💫开始转发历史信息", callback_data=CallBackData.QUERY_FORWARD+task_id),
-            InlineButton(text="❌删除", callback_data=CallBackData.QUERY_DELETED+task_id),
+            InlineButton(text="💫开始转发历史信息",
+                         callback_data=CallBackData.QUERY_FORWARD+task_id),
+            InlineButton(
+                text="❌删除", callback_data=CallBackData.QUERY_DELETED+task_id),
         )
 
         keyboard.row(
@@ -493,10 +496,11 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
         configs = await manager.selectUserConfigs(id=callback_query.from_user.id)
         if configs:
             array = [
-                (config.comment, f"{CallBackData.QUERY_PREFIX}/{config.task_id}")
+                (config.comment,
+                 f"{CallBackData.QUERY_PREFIX}/{config.task_id}")
                 for config in configs
             ]
-            array.append(("💨返回",CallBackData.RETURN))
+            array.append(("💨返回", CallBackData.RETURN))
             kbs = ikb(array_chunk(array, 1))
 
             await callback_query.message.edit("请选择您要编辑的配置", reply_markup=kbs)
@@ -516,8 +520,8 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
     elif callback_query.data.startswith(CallBackData.QUERY_DELETED):
         task_id = callback_query.data.split("/")[-1]
         config = await manager.deleteConfigByTaskid(task_id=task_id)
-        await callback_query.message.edit("小姐您任务已成功删除！",reply_markup=content.RETURN_KEYBOARD)
-    
+        await callback_query.message.edit("小姐您任务已成功删除！", reply_markup=content.RETURN_KEYBOARD)
+
     # 转发历史信息
     elif callback_query.data.startswith(CallBackData.QUERY_FORWARD):
         task_id = callback_query.data.split("/")[-1]
@@ -525,7 +529,6 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
             chat_id=int(puppet_id),
             text=f"/forwardHistoryMsg {task_id}"
         )
-
 
     else:
         logger.error(f"未知的回调数据:{callback_query.data}")
@@ -550,7 +553,7 @@ async def start(client: Client, message: Message):
 @app.on_message(filters=filters.command("id") & filters.private & ~filters.me)
 @capture_err
 async def handle_id_command(client: Client, message: Message):
-    ans: Message = await askQuestion("请输入用户名、邀请链接等，机器人会尝试获取id",message=message)
+    ans: Message = await askQuestion("请输入用户名、邀请链接等，机器人会尝试获取id", message=message)
 
     id = await client.get_chat(chat_id=try_int(ans.text))
 
