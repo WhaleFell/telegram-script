@@ -39,13 +39,13 @@ API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
 __desc__ = """
-欢迎使用聚能转载傀儡号管理系统!V2.0
+欢迎使用转载傀儡号管理系统!V2.0
 
 用于实时转载群聊的信息、转载群聊历史信息,可用于TG群聊克隆、假公群。
 纯TG配置,傻瓜都会配!
 是您的营销好帮手。
 
-使用前请拉入聚能傀儡号: @cheryywk 到群聊/频道
+使用前请拉入傀儡号: @cheryywk 到群聊/频道
 
 如果您不知道群/频道 ID 请将傀儡号拉入群后输入 /getID
 /start 开始
