@@ -496,8 +496,10 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
         configs = await manager.selectUserConfigs(id=callback_query.from_user.id)
         if configs:
             array = [
-                (config.comment,
-                 f"{CallBackData.QUERY_PREFIX}/{config.task_id}")
+                (
+                    config.comment,
+                    f"{CallBackData.QUERY_PREFIX}/{config.task_id}"
+                )
                 for config in configs
             ]
             array.append(("💨返回", CallBackData.RETURN))
@@ -529,6 +531,8 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
             chat_id=int(puppet_id),
             text=f"/forwardHistoryMsg {task_id}"
         )
+
+        await callback_query.message.edit("您的转发历史信息任务已经开始,稍后您可以在管理页面查看转发状态哟", reply_markup=content.RETURN_KEYBOARD)
 
     else:
         logger.error(f"未知的回调数据:{callback_query.data}")
