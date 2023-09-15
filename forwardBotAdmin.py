@@ -7,12 +7,12 @@ import asyncio
 from pathlib import Path
 from typing import List, Union, Any, Optional
 from contextlib import closing, suppress
+import pyromod
 from pyrogram.enums import ParseMode
-from pyrogram.types import Message, InlineKeyboardMarkup, CallbackQuery
+from pyrogram.types import Message, InlineKeyboardMarkup, CallbackQuery, BotCommand
 from pyrogram import Client, idle, filters
 from pykeyboard import InlineButton, InlineKeyboard
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
-import pyromod
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, make_transient
@@ -39,17 +39,20 @@ API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
 __desc__ = """
-欢迎使用转载傀儡号管理系统!V2.0
+💫💫💫欢迎使用转载傀儡号管理系统!V2.0💫💫💫
 
-用于实时转载群聊的信息、转载群聊历史信息,可用于TG群聊克隆、假公群。
-纯TG配置,傻瓜都会配!
-是您的营销好帮手。
+💖用于实时转载群聊的信息、转载群聊历史信息,可用于TG群聊克隆、假公群。💖
+💖纯TG配置,傻瓜都会配!💖
+💖是您的营销好帮手。💖
 
-使用前请拉入傀儡号: @Miemie628 到群聊/频道
+⚠使用前请拉入傀儡号: @Miemie628 到群聊/频道
 
-如果您不知道群/频道 ID 请将傀儡号拉入群后输入 /getID
+⚠如果您不知道群/频道 ID 请将傀儡号拉入群后输入 /getID
+⚠或者在本机器人输入 /id 根据提示输入群组/频道的用户名尝试获取 ID!
+
 /start 开始
 /reg 注册专属账号
+/id 尝试获取 ID
 """
 # ====== Config End ======
 
@@ -589,6 +592,12 @@ type: {"Bot" if user.is_bot else "User"}
 @{user.username}
 ----------------------------
 """
+    )
+
+    app.set_bot_commands(
+        BotCommand("/start", "开始页面"),
+        BotCommand("/reg", "注册账号"),
+        BotCommand("/id", "尝试获取 ID")
     )
 
     await idle()
