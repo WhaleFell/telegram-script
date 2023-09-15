@@ -6,6 +6,7 @@ sqlalchemy
 aiomysql
 aiosqlite
 click
+httpx
 
 
 # pyromod
