@@ -7,6 +7,7 @@ from pyrogram import Client, idle, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, User
 from pyrogram.enums import ParseMode
 from pyrogram.raw import functions
+from pyrogram.handlers.message_handler import MessageHandler
 from urllib.parse import urlparse, parse_qs
 # ====== pyrogram end =====
 
@@ -19,6 +20,7 @@ import sys
 import re
 from functools import wraps
 import random
+import click
 
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
@@ -32,6 +34,12 @@ __desc__ = """
 自动生成 Session string
 """
 # ===== Config end ======
+
+
+@click.group()
+def cli():
+    pass
+
 
 if not SESSION_PATH.exists():
     logger.error(f"{str(SESSION_PATH)}目录不存在正在新建")
@@ -81,7 +89,8 @@ type: {"Bot" if user.is_bot else "User"}
             data=string, encoding="utf8")
 
 
-if __name__ == "__main__":
+@click.command(help="循环获取账号 session string")
+def loopGet():
     i = 0
     while True:
         i += 1
@@ -93,3 +102,51 @@ if __name__ == "__main__":
             sys.exit(0)
         except Exception as e:
             logger.error(f"生成时出现错误！{e}")
+
+
+@click.command(help="监听账号的所有信息")
+@click.argument("name")
+def listen(name):
+    app = makeClient(path=Path(SESSION_PATH, f"{name}.txt"))
+
+    async def listen_handle(client: Client, message: Message):
+        logger.info(f"receive message:{message.text}")
+
+    async def run():
+        await app.start()
+        user = await app.get_me()
+
+        if user.first_name == None:
+            user.first_name = "None"
+        if user.last_name == None:
+            user.last_name = "None"
+        logger.success(
+            f"""
+        -------login success--------
+        username: {user.first_name+user.last_name}
+        type: {"Bot" if user.is_bot else "User"}
+        @{user.username}
+        phone_number:{user.phone_number}
+        ----------------------------
+        """
+        )
+
+        app.add_handler(
+            MessageHandler(
+                listen_handle,
+                filters=filters.all
+            )
+        )
+
+        await idle()
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(run())
+
+
+cli.add_command(loopGet)
+cli.add_command(listen)
+
+
+if __name__ == "__main__":
+    cli()
