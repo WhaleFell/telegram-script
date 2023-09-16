@@ -5,7 +5,7 @@ from loguru import logger
 from asyncio import Queue
 import asyncio
 from pathlib import Path
-from typing import List, Union, Any, Optional
+from typing import List, Union, Any, Optional, Tuple
 from contextlib import closing, suppress
 import pyromod
 from pyrogram.enums import ParseMode
@@ -19,7 +19,7 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase, make_transient
 from sqlalchemy.orm import Mapped, mapped_column, relationship, lazyload
 from sqlalchemy import select, insert, String, func, Boolean, text, ForeignKey, delete
 import os
-puppet_id = str(6353451026)  # 傀儡号 ID
+
 # ===== Sqlalchemy =====
 # ====== sqlalchemy end =====
 
@@ -30,7 +30,7 @@ puppet_id = str(6353451026)  # 傀儡号 ID
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
 DEBUG = True
-NAME = os.environ.get("NAME") or "bot"
+NAME = os.environ.get("NAME") or "WFTest8964Bot"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
 DB_URL = os.environ.get(
@@ -38,6 +38,11 @@ DB_URL = os.environ.get(
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
+
+puppet_id: int = "6353451026"  # 傀儡号 ID
+admin_ids: List[int] = [
+    6398941159
+]  # 管理员 ID
 __desc__ = """
 💫💫💫欢迎使用转载傀儡号管理系统!V2.0💫💫💫
 
@@ -53,6 +58,7 @@ __desc__ = """
 /start 开始
 /reg 注册专属账号
 /id 尝试获取 ID
+/getID 获取当前会话的用户 id
 """
 # ====== Config End ======
 
@@ -166,8 +172,20 @@ def get_user_id():
     return str(user.id)
 
 
-# ====== helper function end ====
+def authAdmin(message: Union[Message, CallbackQuery, str, int]) -> bool:
+    """权鉴 authorization"""
+    if isinstance(message, (int, str)):
+        id = int(message)
+        if id in admin_ids:
+            return True
 
+    if message.from_user.id in admin_ids:
+        return True
+
+    return False
+
+
+# ====== helper function end ====
 # ====== db model ======
 engine = create_async_engine(DB_URL, pool_pre_ping=True, pool_recycle=600)
 
@@ -303,6 +321,22 @@ class SQLManager(object):
             )
             await session.commit()
 
+    async def countTasksUsers(self) -> Tuple[int, int]:
+        """统计系统总任务,总用户 数量"""
+        async with self.AsyncSessionMaker() as session:
+            config_count = await session.execute(
+                select(func.count()).select_from(TGForwardConfig)
+            )
+            config = config_count.scalar()
+
+            user_count = await session.execute(
+                select(func.count()).select_from(User)
+            )
+
+            user = user_count.scalar()
+
+            return (config, user)
+
 
 manager = SQLManager(async_session)
 
@@ -356,14 +390,15 @@ class CallBackData():
     QUERY_DELETED = "query/deleted/"
     QUERY_FORWARD = "query/forward/"
 
+    ADMIN = "admin/"
+
 
 class Content(object):
 
     def __init__(self) -> None:
         pass
 
-    @property
-    def START_KEYBOARD(self,) -> InlineKeyboardMarkup:
+    def START_KEYBOARD(self, isAdmin: bool = False) -> InlineKeyboardMarkup:
         keyboard = InlineKeyboard()
         keyboard.row(
             InlineButton(
@@ -374,6 +409,11 @@ class Content(object):
             InlineButton(
                 text="❤账号信息", callback_data=CallBackData.START_ACCOUNT),
         )
+        if isAdmin:
+            keyboard.row(
+                InlineButton(
+                    text="🛑管理员入口", callback_data=CallBackData.ADMIN),
+            )
         return keyboard
 
     @property
@@ -406,12 +446,18 @@ class Content(object):
         return f"<code>{code}</code>"
 
     def GET_USER_INFO(self, user: User) -> str:
+        if authAdmin(user.id):
+            add = "\n**欢迎您,我尊贵的主任**\n"
+        else:
+            add = ""
+
         string = f"""
 用户信息:
 用户ID:{self.addCode(user.id)}
 注册时间:{self.addCode(user.reg_at)}
 授权到期时间:{self.addCode(user.auth_time)}
 配置任务数量:{len(user.configs)}
+{add}
 """
         return string
 
@@ -453,6 +499,14 @@ id: <code>{self.addCode(config.task_id)} // 任务id
 创建的用户 ID:{self.addCode(config.user_id)}
 """
 
+    def adminInfo(self, tuple: Tuple[int, int]) -> str:
+
+        string = f"""
+当前系统共有 {tuple[0]} 条转发任务
+共有 {tuple[1]} 个用户使用！
+"""
+        return string
+
 
 content = Content()
 
@@ -464,8 +518,11 @@ content = Content()
 @app.on_callback_query()
 @capture_err
 async def handle_callback_query(client: Client, callback_query: CallbackQuery):
+    # 返回
     if callback_query.data == CallBackData.RETURN:
-        await callback_query.message.edit(__desc__, reply_markup=content.START_KEYBOARD)
+        isAdmin = authAdmin(callback_query)
+
+        await callback_query.message.edit(__desc__, reply_markup=content.START_KEYBOARD(isAdmin=isAdmin))
         return
 
     # 添加转载
@@ -489,6 +546,7 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
     # 账号信息
     elif callback_query.data == CallBackData.START_ACCOUNT:
         user = await manager.selectUserByID(id=callback_query.from_user.id)
+
         if user:
             await callback_query.message.edit(text=content.GET_USER_INFO(user), reply_markup=content.RETURN_KEYBOARD)
             return
@@ -538,6 +596,13 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
 
         await callback_query.message.edit("您的转发历史信息任务已经开始,稍后您可以在管理页面查看转发状态哟", reply_markup=content.RETURN_KEYBOARD)
 
+    elif callback_query.data.startswith(CallBackData.ADMIN):
+        if not authAdmin(callback_query):
+            return
+
+        data = await manager.countTasksUsers()
+        await callback_query.message.edit(content.adminInfo(data), reply_markup=content.RETURN_KEYBOARD)
+
     else:
         logger.error(f"未知的回调数据:{callback_query.data}")
 
@@ -545,7 +610,9 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
 @app.on_message(filters=filters.command("start") & filters.private & ~filters.me)
 @capture_err
 async def start(client: Client, message: Message):
-    await message.reply(__desc__, reply_markup=content.START_KEYBOARD)
+    isAdmin = authAdmin(message)
+
+    await message.reply(__desc__, reply_markup=content.START_KEYBOARD(isAdmin))
 
 
 @app.on_message(filters=filters.command("reg") & filters.private & ~filters.me)
@@ -566,6 +633,14 @@ async def handle_id_command(client: Client, message: Message):
     id = await client.get_chat(chat_id=try_int(ans.text))
 
     await ans.reply(f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>")
+
+
+@app.on_message(filters=filters.command("getID") & ~filters.me)
+@capture_err
+async def get_ID(client: Client, message: Message):
+    await message.reply(
+        f"当前会话的ID:<code>{message.chat.id}</code>"
+    )
 
 
 # ==== Handle end =====
