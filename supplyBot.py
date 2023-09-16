@@ -1,6 +1,6 @@
 # ===== Sqlalchemy =====
 from sqlalchemy import select, insert, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
 from datetime import datetime
@@ -10,7 +10,7 @@ from datetime import datetime
 import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 from pyrogram import Client, idle, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, BotCommand
+from pyrogram.types import Message, InlineKeyboardMarkup, ReplyKeyboardMarkup, BotCommand
 from pyrogram.handlers import MessageHandler
 from pyrogram.enums import ParseMode
 # ====== pyrogram end =====
@@ -30,15 +30,22 @@ import glob
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
 DEBUG = True
-NAME = os.environ.get("NAME") or "bot"
+NAME = os.environ.get("NAME") or "WFTest8964Bot"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = "mysql+aiomysql://root:123456@localhost/tgconfigs?charset=utf8mb4"
+DB_URL = "mysql+aiomysql://root:123456@localhost/supplyTGBot?charset=utf8mb4"
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
 __desc__ = """
-这是一个 telegram pyrogram 机器人单文件编程模板,个人自用
+发布规则  付费广告 消耗 1 Cion
+
+发布付费广告严格要求如下
+1：行数限制15行内【超过百分百不通过】
+2：禁止发布虚假内容，禁止诈骗欺骗用户🚫
+3：无需备注累计广告次数，机器人会自动统计
+
+请编写好广告词，点击下方【📝自助发布】
 """
 # ====== Config End ======
 
@@ -83,42 +90,33 @@ def makeClient(path: Path) -> Client:
     )
 
 
-async def makeSessionString(**kwargs) -> str:
-    client = Client(
-        name="test",
-        api_id=API_ID,
-        api_hash=API_HASH,
-        in_memory=True,
-        **kwargs
-    )
-
-    async with client as c:
-        print(await c.export_session_string())
-
-
-def loadClientsInFolder() -> List[Client]:
-    session_folder = Path(ROOTPATH, "sessions")
-    file_paths = glob.glob(os.path.join(session_folder.as_posix(), "*.txt"))
-
-    file_content_list = []
-    for file_path in file_paths:
-        with open(file_path, "r", encoding="utf-8") as f:
-            file_content = f.read()
-            file_name = Path(file_path).stem
-            file_content_list.append((file_name, file_content))
-
-    return [
-        Client(
-            name=name, session_string=session,
-            api_id=API_ID, api_hash=API_HASH, in_memory=True
-        )
-        for name, session in file_content_list
-    ]
-
-
 app = makeClient(SESSION_PATH)
 
 # ====== Client maker end =======
+
+# ====== Content enum =======
+
+
+class Content(object):
+
+    ZZFB = "💫自助发布"
+    WYCZ = "✨我要充值"
+    GRZX = "👩‍🦱个人中心"
+
+    def KEYBOARD(self) -> ReplyKeyboardMarkup:
+        keyboard = ReplyKeyboardMarkup(
+            [
+                [self.ZZFB, self.WYCZ],
+                [self.GRZX]
+            ],
+            resize_keyboard=True
+        )
+        return keyboard
+
+
+content = Content()
+
+# ====== Content enum End =======
 
 # ====== helper function  ====
 
@@ -143,24 +141,66 @@ def try_int(string: str) -> Union[str, int]:
 
 # ====== helper function end ====
 
+# ====== DB model =====
+
+engine = create_async_engine(DB_URL, pool_pre_ping=True, pool_recycle=600)
+
+# 会话构造器
+async_session: async_sessionmaker[AsyncSession] = async_sessionmaker(
+    bind=engine, expire_on_commit=False)
+
+
+class Base(AsyncAttrs, DeclarativeBase):
+    pass
+
+
+class User(Base):
+    __tablename__ = 'user'
+    __table_args__ = {'comment': '供需机器人用户表'}
+
+    id: Mapped[str] = mapped_column(
+        String(20), primary_key=True, comment="用户 ID")
+
+    reg_at: Mapped[datetime] = mapped_column(
+        nullable=False, server_default=func.now(), comment='注册时间'
+    )
+
+    coin: Mapped[int] = mapped_column(
+        nullable=False, default=100, comment="用户的coin数量"
+    )
+
+    count: Mapped[int] = mapped_column(
+        nullable=False, default=0, comment="用户的发布次数"
+    )
+
+
+# ======= DB model End =====
+
 # ===== Handle ======
 
 
 @app.on_message(filters=filters.command("start") & filters.private & ~filters.me)
 @capture_err
 async def start(client: Client, message: Message):
-    await message.reply_text(__desc__)
+    await message.reply_text(__desc__, reply_markup=content.KEYBOARD())
 
 
-@app.on_message(filters=filters.command("id") & filters.private & ~filters.me)
+@app.on_message(filters=filters.regex(content.ZZFB) & filters.private & ~filters.me)
 @capture_err
-async def handle_id_command(client: Client, message: Message):
-    ans: Message = await askQuestion("请输入用户名、邀请链接等，机器人会尝试获取id", client, message)
+async def sendSupply(client: Client, message: Message):
+    await message.reply_text("自助发布")
 
-    id = await client.get_chat(chat_id=try_int(ans.text))
 
-    await ans.reply(f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>")
+@app.on_message(filters=filters.regex(content.WYCZ) & filters.private & ~filters.me)
+@capture_err
+async def addCoin(client: Client, message: Message):
+    await message.reply_text("我要充值")
 
+
+@app.on_message(filters=filters.regex(content.GRZX) & filters.private & ~filters.me)
+@capture_err
+async def accountCenter(client: Client, message: Message):
+    await message.reply_text("个人中心")
 
 # ==== Handle end =====
 
@@ -169,6 +209,9 @@ async def main():
     global app
     await app.start()
     user = await app.get_me()
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
     # ===== Test Code =======
     # chat_id = await app.get_chat("@w2ww2w2w")
@@ -201,4 +244,3 @@ if __name__ == "__main__":
         with suppress(asyncio.exceptions.CancelledError):
             loop.run_until_complete(main())
         loop.run_until_complete(asyncio.sleep(3.0))  # task cancel wait 等待任务结束
-    # asyncio.run(makeSessionString())
