@@ -105,6 +105,7 @@ def capture_err(func):
                 await message.message.reply(f"机器人按钮回调 Panic 了:\n<code>{err}</code>")
             else:
                 await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
+            logger.exception(err)
             raise err
     return capture
 # ====== error handle end =========
