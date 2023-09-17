@@ -79,12 +79,16 @@ def capture_err(func):
     async def capture(client: Client, message: Union[Message, CallbackQuery], *args, **kwargs):
         try:
             return await func(client, message, *args, **kwargs)
+        except asyncio.exceptions.TimeoutError:
+            await message.reply(f"回答超时,请重来！")
+            logger.error("回答超时！")
         except Exception as err:
             if isinstance(message, CallbackQuery):
                 await message.message.reply(f"机器人按钮回调 Panic 了:\n<code>{err}</code>")
             else:
                 await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
             raise err
+
     return capture
 # ====== error handle end =========
 
@@ -114,6 +118,7 @@ class CallbackDataQueue(object):
         self.queue = Queue()
 
     async def addCallback(self, callbackQuery: CallbackQuery):
+        logger.info(f"new callbackQuery data:{callbackQuery.data}")
         await self.queue.put(callbackQuery)
 
     async def moniterCallback(self, message: Message, timeout: int = 10) -> CallbackQuery:
@@ -192,7 +197,7 @@ class Content(object):
         keyboard = InlineKeyboard()
         keyboard.row(
             InlineButton(text="☑确定", callback_data=CallBackData.YES),
-            InlineButton(text="❌取消", callback_data=CallBackData.NO),
+            InlineButton(text="❌取消", callback_data=CallBackData.RETURN),
         )
         return keyboard
 

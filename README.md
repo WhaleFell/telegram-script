@@ -53,4 +53,18 @@ tgbase python -u 汇旺抢红包.py
 `docker restart 自己起的名称`
 
 docker ps --format '{{.Names}} {{.Status}}'
+
+
+docker run -d --name=supplybot_test \
+-e NAME="WFTest8964Bot" \
+-e DB_URL="mysql+aiomysql://root:lovehyy@172.17.0.2:3306/supplyTGBot?charset=utf8mb4" \
+-v /wfwork/tgbot_base/telegram-script/supplyBot.py:/wkdir/main.py \
+-v /wfwork/tgbot_base/telegram-script/sessions:/wkdir/sessions \
+tgbot_base python -u main.py
+```
+
+## USDT 支付接口平台搭建
+
+```shell
+
 ```

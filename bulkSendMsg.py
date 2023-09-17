@@ -221,9 +221,6 @@ async def main():
                     rawUpdateHandle
                 )
             )
-            app.remove_handler(
-
-            )
 
         # ======== Test Code end ==========
 
