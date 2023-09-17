@@ -10,7 +10,7 @@ from datetime import datetime
 import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 from pyrogram import Client, idle, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, BotCommand
+from pyrogram.types import Message, InlineKeyboardMarkup, BotCommand, CallbackQuery
 from pyrogram.handlers import MessageHandler
 from pyrogram.enums import ParseMode
 # ====== pyrogram end =====
@@ -60,11 +60,14 @@ logger.add(
 def capture_err(func):
     """handle error and notice user"""
     @wraps(func)
-    async def capture(client: Client, message: Message, *args, **kwargs):
+    async def capture(client: Client, message: Union[Message, CallbackQuery], *args, **kwargs):
         try:
             return await func(client, message, *args, **kwargs)
         except Exception as err:
-            await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
+            if isinstance(message, CallbackQuery):
+                await message.message.reply(f"机器人按钮回调 Panic 了:\n<code>{err}</code>")
+            else:
+                await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
             raise err
     return capture
 # ====== error handle end =========
