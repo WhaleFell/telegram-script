@@ -90,9 +90,8 @@ async def main():
 
     for app in clients:
         async with app:
-            await app.invoke(functions.account.UpdateStatus(offline=False))
             me = await app.get_me()
-            print(me.first_name, "登录成功")
+            logger.success(me.first_name, "登录成功")
 
             if os.path.exists(os.path.join(sys.path[0], "groups.txt")):
                 with open("groups.txt", "r") as f:
