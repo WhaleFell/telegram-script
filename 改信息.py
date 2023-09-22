@@ -38,7 +38,9 @@ COPY_GROUP_ID = -1001797337928
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions")
-
+if not SESSION_PATH.exists():
+    logger.error("Not Found Session folder!")
+    SESSION_PATH.mkdir()
 
 __desc__ = """
 TG 群用户克隆
@@ -48,8 +50,20 @@ TG 群用户克隆
 """
 # ====== Config End ======
 
+# ===== logger ====
+logger.remove()
+logger.add(
+    sys.stdout,
+    colorize=True,
+    format="<green>{time:HH:mm:ss}</green> | {name}:{function} {level} | <level>{message}</level>",
+    level="DEBUG" if DEBUG else "INFO",
+    backtrace=True,
+    diagnose=True
+)
+# ===== logger end =====
 
 # ====== Helper Function ======
+
 
 class BaseUser(BaseModel):
     first: Union[str, None] = None
