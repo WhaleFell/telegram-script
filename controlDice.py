@@ -1,11 +1,5 @@
-# ===== Sqlalchemy =====
-from sqlalchemy import select, insert, String, func
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
-from datetime import datetime
-# ====== sqlalchemy end =====
-
+# /bin/python3
+# 控制筛子
 # ====== pyrogram =======
 import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
@@ -30,15 +24,14 @@ import glob
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
 DEBUG = True
-NAME = os.environ.get("NAME") or "bot"
+NAME = os.environ.get("NAME") or "cheryywk"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = "mysql+aiomysql://root:123456@localhost/tgconfigs?charset=utf8mb4"
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
 __desc__ = """
-这是一个 telegram pyrogram 机器人单文件编程模板,个人自用
+控制筛子 control dice
 """
 # ====== Config End ======
 
@@ -149,7 +142,7 @@ def try_int(string: str) -> Union[str, int]:
 # ===== Handle ======
 
 
-@app.on_message(filters=filters.command("start") & filters.private & ~filters.me)
+@app.on_message(filters=filters.command("start"))
 @capture_err
 async def start(client: Client, message: Message):
     await message.reply_text(__desc__)
@@ -164,6 +157,21 @@ async def handle_id_command(client: Client, message: Message):
 
     await ans.reply(f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>")
 
+
+@app.on_message(filters=filters.command("dice"))
+async def control_dice(client: Client, message: Message):
+    print("tigger dice!")
+    msg: Message = await client.send_dice(
+        chat_id=message.chat.id,
+    )
+    print(msg)
+    await client.send_dice()
+    await client.forward_messages(
+        chat_id=message.chat.id,
+        from_chat_id=message.chat.id,
+        message_ids=msg.id,
+
+    )
 
 # ==== Handle end =====
 
@@ -187,12 +195,6 @@ type: {"Bot" if user.is_bot else "User"}
 @{user.username}
 ----------------------------
 """
-    )
-
-    await app.set_bot_commands(
-        [
-            BotCommand("start", "开始"),
-        ]
     )
 
     await idle()

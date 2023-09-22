@@ -98,7 +98,7 @@ def capture_err(func):
 def makeClient(path: Path) -> Client:
     session_string = path.read_text(encoding="utf8")
     return Client(
-        name="test",
+        name=path.stem,
         api_id=API_ID,
         api_hash=API_HASH,
         session_string=session_string,

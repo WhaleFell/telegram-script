@@ -3,41 +3,43 @@ import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 from pyrogram import Client, idle, filters
 from pyrogram.handlers import MessageHandler
-from pyrogram.handlers.raw_update_handler import RawUpdateHandler
-from pyrogram.types import Message, InlineKeyboardMarkup
+from pyrogram.types import Message, InlineKeyboardMarkup, User
+from pyrogram import errors
 from pyrogram.enums import ParseMode
 from pyrogram.raw import functions
-import pyrogram
+from urllib.parse import urlparse, parse_qs
 # ====== pyrogram end =====
 
 from contextlib import closing, suppress
-from typing import List, Union, Any, Optional, Tuple
+from typing import List, Union, Any, Optional
 from pathlib import Path
 import asyncio
 from loguru import logger
 import sys
-import re
 from functools import wraps
-import glob
 import os
-# https://github.com/jd/tenacity
-from tenacity import retry, stop_after_attempt, wait_fixed
-
+import glob
 
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
-SESSIONS_PATH: Path = Path(ROOTPATH, "sessions")
 DEBUG = True
+# 更改以下两个参数
+# txt 文件的名字
+# 监控红包的群聊 ID 如果不知道,启动机器人后发送 /getID 就可以了
+# 可以监控多个群聊
+REDPACK_GROUPS_ID = [
+    -1001968860718,
+    -1001968888888,
+    -1001979255590,
+    -1001811589217,
+    -1001919310248
+]
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
-# GROUP_ID = [-1001968860718]
-GROUP_ID = [-1001963862221]
 __desc__ = """
-批量自动群发消息,等待解除禁言后就发送
-将 session 放在 sessions folder 就自动登陆
+抢夺 @okpay 机器人的红包
 """
 # ====== Config End ======
-
 # ===== logger ====
 logger.remove()
 logger.add(
@@ -49,8 +51,6 @@ logger.add(
     diagnose=True
 )
 # ===== logger end =====
-
-banned_user: List[Tuple[Client, str]] = []
 
 # ===== error handle =====
 
@@ -114,122 +114,122 @@ def loadClientsInFolder() -> List[Client]:
     ]
 
 
-def loadTXTFile(path: Path) -> List[Tuple[Path, str]]:
-    """
-    txt 文件格式: session文件名,需要发送的内容
-    """
-    result = []
-    with open(file=path.as_posix(), mode="r", encoding="utf8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            parts = line.split(',')
-            if len(parts) < 2:
-                continue
-            account = parts[0]
-            content = ','.join(parts[1:])
-            result.append((Path(SESSIONS_PATH, f"{account}.txt"), content))
-    return result
-
+# app = makeClient(SESSION_PATH)
 # ====== Client maker end =======
 
 # ====== helper function  ====
 
+
+def parse_url(url: str):
+    parsed = urlparse(url)
+    return parsed.path[1:], parse_qs(parsed.query)['start']
 
 # ====== helper function end ====
 
 # ===== Handle ======
 
 
-# @app.on_message(filters=filters.command("start") & filters.private & ~filters.me)
+# @app.on_message(filters=filters.command("start") & filters.private)
+@capture_err
 async def start(client: Client, message: Message):
     await message.reply_text(__desc__)
 
+# @bao5bot 5027290533
 
-@retry(stop=(stop_after_attempt(5),), wait=wait_fixed(2))
-async def trySendMsg(client: Client, content: str,) -> bool:
-    await client.send_message(
-        chat_id=GROUP_ID[0],
-        text=content
+
+# @app.on_message(filters=filters.chat(5027290533) & filters.inline_keyboard)
+async def handle_redpacket_bot(client: Client, message: Message):
+    for items in message.reply_markup.inline_keyboard:
+        for item in items:
+            try:
+                await client.request_callback_answer(
+                    chat_id=message.chat.id,
+                    message_id=message.id,
+                    callback_data=item.callback_data
+                )
+            except errors.exceptions.bad_request_400.DataInvalid:
+                logger.info("可忽略错误!")
+            except Exception as e:
+                logger.error(
+                    f"{client.me.first_name} 抢红包时出现错误!"
+
+                )
+
+
+# @app.on_message(filters=filters.chat(REDPACK_GROUPS_ID) & filters.inline_keyboard)
+# @capture_err
+async def handle_redpacket_msg(client: Client, message: Message):
+    if "红包" in message.text and client.me.first_name in message.text:
+        for i in message.text.split("\n\n")[1].split("\n"):
+            if client.me.first_name in i:
+                logger.success(
+                    "%s 抢到 %s " %
+                    client.me.first_name,
+                    i.split(' ')[1].split(
+                        '(')[0], message.text.split("💰")[0].split(" ")[-1]
+                )
+
+
+# @app.on_message(filters=filters.command("getID"))
+# @capture_err
+async def get_ID(client: Client, message: Message):
+    await message.reply(
+        f"当前会话的ID:<code>{message.chat.id}</code>"
     )
 
 
-async def tryMore(app: Client, content: str) -> bool:
-    try:
-        await trySendMsg(app, content)
-        logger.success(f"{app.name} 发送成功！正在登出")
-        await app.stop(block=False)
-        return True
-    except Exception as e:
-        logger.error(f"{app.name} 重试5次仍然失败,进入监听解禁列表:{e}")
-
-
-async def rawUpdateHandle(
-    client: Client,
-    update: pyrogram.raw.base.Update,
-    users: pyrogram.types.User,
-    chats: pyrogram.types.Chat
-):
-    """原始更新监听"""
-    global apps
-    if "UpdateChatDefaultBannedRights" in str(type(update)):
-        if not update.default_banned_rights.send_messages:
-            if hasattr(update.peer, "chat_id"):
-                if -1*update.peer.chat_id in GROUP_ID:
-                    await tryMore(client, apps[client])
-            if hasattr(update.peer, "channel_id"):
-                cid = int("-100" + str(update.peer.channel_id))
-                if cid in GROUP_ID:
-                    await tryMore(client, apps[client])
-
 # ==== Handle end =====
-cs = loadTXTFile(Path(ROOTPATH, "content.txt"))
-apps = {
-    makeClient(name): content
-    for name, content in cs
-}
 
 
-@logger.catch()
 async def main():
-    global apps
-    print(apps)
-    for app, content in apps.items():
+    apps = loadClientsInFolder()
+
+    for app in apps:
 
         await app.start()
         user = await app.get_me()
-        await app.invoke(functions.account.UpdateStatus(offline=False))
-        logger.success(
-            f"""
-        -------login success--------
-        username: {user.first_name}
-        type: {"Bot" if user.is_bot else "User"}
-        @{user.username}
-        ----------------------------
-        """
-        )
 
         # ===== Test Code =======
-
-        res = await tryMore(app, content)
-        if not res:
-            logger.info(f"{app.name} 发送失败,添加解禁监听！")
-            app.add_handler(
-                RawUpdateHandler(
-                    rawUpdateHandle
-                )
-            )
+        # chat_id = await app.get_chat("@w2ww2w2w")
+        # print(chat_id)
 
         # ======== Test Code end ==========
 
         # ======= Add handle ========
+        app.add_handler(
+            MessageHandler(start, filters=filters.all)
+        )
+        app.add_handler(
+            MessageHandler(get_ID, filters=filters.all)
+        )
+
+        # @okpay 5703356189
+
+        app.add_handler(
+            MessageHandler(handle_redpacket_bot, filters=filters.chat(
+                5703356189) & filters.inline_keyboard & filters.text)
+        )
+
+        app.add_handler(
+            MessageHandler(handle_redpacket_msg, filters=filters.chat(
+                5703356189) & filters.text)
+        )
 
         # ======= Add Handle end =====
 
+        logger.success(
+            f"""
+    -------login success--------
+    username: {user.first_name}
+    type: {"Bot" if user.is_bot else "User"}
+    @{user.username}
+    ----------------------------
+    """
+        )
+
     await idle()
 
-    for app, content in apps.items():
+    for app in apps:
         await app.stop()
 
 if __name__ == "__main__":
@@ -239,4 +239,3 @@ if __name__ == "__main__":
             loop.run_until_complete(main())
         loop.run_until_complete(asyncio.sleep(3.0))  # task cancel wait 等待任务结束
     # asyncio.run(makeSessionString())
-    pass
