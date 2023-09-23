@@ -149,9 +149,9 @@ cli.add_command(listen)
 
 
 if __name__ == "__main__":
-    # cli()
-    asyncio.run(
-        makeSessionString(
-            bot_token="6038643306:AAGsLaceC5DVgfN_BydRgbpxgqJgWfAg9xI"
-        )
-    )
+    cli()
+    # asyncio.run(
+    #     makeSessionString(
+    #         bot_token="6038643306:AAGsLaceC5DVgfN_BydRgbpxgqJgWfAg9xI"
+    #     )
+    # )

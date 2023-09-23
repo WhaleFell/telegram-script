@@ -60,6 +60,7 @@ logger.add(
     backtrace=True,
     diagnose=True
 )
+
 # ===== logger end =====
 
 # ====== Helper Function ======
