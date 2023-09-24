@@ -61,6 +61,18 @@ docker run -d --name=supplybot_test \
 -v /wfwork/tgbot_base/telegram-script/supplyBot.py:/wkdir/main.py \
 -v /wfwork/tgbot_base/telegram-script/sessions:/wkdir/sessions \
 tgbot_base python -u main.py
+
+
+# 抢注名字程序
+docker run -d --name=robGroupName \
+-e NAME="文件名称" \
+-v 替换为脚本绝对目录:/wkdir/main.py \
+-v 替换为Session文件夹绝对目录:/wkdir/sessions \
+tgbot_base python -u main.py
+
+# 查看日志
+docker logs -f robGroupName
+
 ```
 
 ## USDT 支付接口平台搭建

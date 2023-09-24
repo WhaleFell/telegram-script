@@ -139,6 +139,7 @@ async def start(client: Client, message: Message):
 
 # @app.on_message(filters=filters.chat(5027290533) & filters.inline_keyboard)
 async def handle_redpacket_bot(client: Client, message: Message):
+    logger.debug(f"识别到InlineKeyboard:{message.text}")
     for items in message.reply_markup.inline_keyboard:
         for item in items:
             try:
@@ -159,6 +160,7 @@ async def handle_redpacket_bot(client: Client, message: Message):
 # @app.on_message(filters=filters.chat(REDPACK_GROUPS_ID) & filters.inline_keyboard)
 # @capture_err
 async def handle_redpacket_msg(client: Client, message: Message):
+    logger.debug(f"识别到InlineKeyboard:{message.text}")
     if "红包" in message.text and client.me.first_name in message.text:
         for i in message.text.split("\n\n")[1].split("\n"):
             if client.me.first_name in i:
@@ -180,7 +182,7 @@ async def get_ID(client: Client, message: Message):
 
 # ==== Handle end =====
 
-
+@logger.catch()
 async def main():
     apps = loadClientsInFolder()
 
@@ -196,23 +198,28 @@ async def main():
         # ======== Test Code end ==========
 
         # ======= Add handle ========
-        app.add_handler(
-            MessageHandler(start, filters=filters.all)
-        )
-        app.add_handler(
-            MessageHandler(get_ID, filters=filters.all)
-        )
+        # app.add_handler(
+        #     MessageHandler(start, filters=filters.all)
+        # )
+
+        # app.add_handler(
+        #     MessageHandler(get_ID, filters=filters.all)
+        # )
 
         # @okpay 5703356189
 
         app.add_handler(
-            MessageHandler(handle_redpacket_bot, filters=filters.chat(
-                5703356189) & filters.inline_keyboard & filters.text)
+            MessageHandler(
+                handle_redpacket_bot,
+                filters=filters.inline_keyboard
+            )
         )
 
         app.add_handler(
-            MessageHandler(handle_redpacket_msg, filters=filters.chat(
-                5703356189) & filters.text)
+            MessageHandler(
+                handle_redpacket_msg,
+                filters=filters.inline_keyboard
+            )
         )
 
         # ======= Add Handle end =====
@@ -238,4 +245,3 @@ if __name__ == "__main__":
         with suppress(asyncio.exceptions.CancelledError):
             loop.run_until_complete(main())
         loop.run_until_complete(asyncio.sleep(3.0))  # task cancel wait 等待任务结束
-    # asyncio.run(makeSessionString())

@@ -6,6 +6,7 @@ from pyrogram.handlers import MessageHandler
 from pyrogram.types import Message, InlineKeyboardMarkup, User
 from pyrogram.enums import ParseMode
 from pyrogram.raw import functions
+from pyrogram import errors
 from urllib.parse import urlparse, parse_qs
 # ====== pyrogram end =====
 
@@ -31,7 +32,8 @@ NAME = "cheryywk"
 # 可以监控多个群聊
 REDPACK_GROUPS_ID = [
     -1001968860718,
-    -1001968888888
+    -1001968888888,
+    -1001584779243
 ]
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
@@ -62,7 +64,7 @@ def capture_err(func):
         try:
             return await func(client, message, *args, **kwargs)
         except Exception as err:
-            await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
+            # await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
             raise err
     return capture
 # ====== error handle end =========
@@ -144,9 +146,7 @@ async def handle_redpacket_bot(client: Client, message: Message):
         if "点击领取红包" in button.text:
             logger.success(f"{client.name} 开始抢红包！")
             await client.request_callback_answer(message.chat.id, message.id, button.callback_data)
-            # await message.reply("红包程序已经抢了,请查看结果！")
     logger.error(f"{client.name} 红包程序无法识别或者已经抢完了")
-    # await message.reply("红包程序无法识别或者已经抢完了")
 
 
 # @app.on_message(filters=filters.chat(REDPACK_GROUPS_ID) & filters.inline_keyboard)
@@ -172,8 +172,34 @@ async def handle_redpacket(client: Client, message: Message):
                 )
             )
 
+    # 继续传播
+    message.continue_propagation()
+
+# handle @bao888bot 5674074992
+# 只需要点击一次按钮的机器人
+
+
+@capture_err
+async def handle_any_InlineKeyboard(client: Client, message: Message):
+    logger.info(f"识别到 InlineKeyboard 开始尝试点击 {message.text}")
+    for items in message.reply_markup.inline_keyboard:
+        for item in items:
+            try:
+                await client.request_callback_answer(
+                    chat_id=message.chat.id,
+                    message_id=message.id,
+                    callback_data=item.callback_data
+                )
+            except errors.exceptions.bad_request_400.DataInvalid:
+                logger.info("可忽略错误!")
+            except Exception as e:
+                logger.error(
+                    f"{client.me.first_name} 点击 InlineKeyboard 时出现错误! {message.text}"
+                )
 
 # @app.on_message(filters=filters.command("getID"))
+
+
 @capture_err
 async def get_ID(client: Client, message: Message):
     await message.reply(
@@ -200,17 +226,43 @@ async def main():
 
         # ======= Add handle ========
         app.add_handler(
-            MessageHandler(start, filters=filters.command(
-                "start") & filters.private)
+            MessageHandler(
+                start,
+                filters=filters.command(
+                    "start"
+                ) & filters.private)
         )
+
+        # 处理机器人信息 @bao5bot 5027290533
         app.add_handler(
-            MessageHandler(handle_redpacket_bot, filters=filters.chat(
-                5027290533) & filters.inline_keyboard)
+            MessageHandler(
+                handle_redpacket_bot,
+                filters=filters.chat(
+                    5027290533
+                ) & filters.inline_keyboard)
         )
+
+        # 处理指定群的机器人跳转
         app.add_handler(
-            MessageHandler(handle_redpacket, filters=filters.chat(
-                REDPACK_GROUPS_ID) & filters.inline_keyboard)
+            MessageHandler(
+                handle_redpacket,
+                filters=filters.chat(
+                    REDPACK_GROUPS_ID
+                ) & filters.inline_keyboard
+            )
         )
+
+        # 处理任何 InlineKeyboard 并逐个点击
+        # handle @bao888bot 5674074992
+        app.add_handler(
+            MessageHandler(
+                handle_any_InlineKeyboard,
+                filters=filters.chat(
+                    REDPACK_GROUPS_ID
+                ) & filters.inline_keyboard
+            )
+        )
+
         app.add_handler(
             MessageHandler(get_ID, filters=filters.command("getID"))
         )
