@@ -171,9 +171,11 @@ async def handle_redpacket(client: Client, message: Message):
                     random_id=random.randint(1000, 9999)
                 )
             )
+            return
 
-    # 继续传播
+    # 无法识别就继续传播
     message.continue_propagation()
+
 
 # handle @bao888bot 5674074992
 # 只需要点击一次按钮的机器人
