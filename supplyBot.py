@@ -2,8 +2,14 @@
 from sqlalchemy import select, insert, String, func, update, BigInteger, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    AsyncAttrs,
+    async_sessionmaker,
+    AsyncSession,
+)
 from datetime import datetime
+
 # ====== sqlalchemy end =====
 
 # ====== pyrogram =======
@@ -11,13 +17,22 @@ import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 from pykeyboard import InlineButton, InlineKeyboard
 from pyrogram import Client, idle, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, ReplyKeyboardMarkup, BotCommand, CallbackQuery, InlineKeyboardButton
+from pyrogram.types import (
+    Message,
+    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    BotCommand,
+    CallbackQuery,
+    InlineKeyboardButton,
+)
 from pyrogram.handlers import MessageHandler
 from pyrogram.enums import ParseMode
+
 # ====== pyrogram end =====
 
 from contextlib import closing, suppress
 from typing import List, Union, Any, Optional
+from typing_extensions import Annotated
 from pathlib import Path
 import asyncio
 from loguru import logger
@@ -35,8 +50,10 @@ DEBUG = True
 NAME = os.environ.get("NAME") or "WFTest8964Bot"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = os.environ.get(
-    "DB_URL") or "mysql+aiomysql://root:123456@localhost/supplyTGBot?charset=utf8mb4"
+DB_URL = (
+    os.environ.get("DB_URL")
+    or "mysql+aiomysql://root:123456@localhost/supplyTGBot?charset=utf8mb4"
+)
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
@@ -66,7 +83,7 @@ logger.add(
     format="<green>{time:HH:mm:ss}</green> | {name}:{function} {level} | <level>{message}</level>",
     level="DEBUG" if DEBUG else "INFO",
     backtrace=True,
-    diagnose=True
+    diagnose=True,
 )
 # ===== logger end =====
 
@@ -75,21 +92,29 @@ logger.add(
 
 def capture_err(func):
     """handle error and notice user"""
+
     @wraps(func)
-    async def capture(client: Client, message: Union[Message, CallbackQuery], *args, **kwargs):
+    async def capture(
+        client: Client, message: Union[Message, CallbackQuery], *args, **kwargs
+    ):
         try:
             return await func(client, message, *args, **kwargs)
         except asyncio.exceptions.TimeoutError:
-            await message.reply(f"回答超时,请重来！")
+            if isinstance(message, Message):
+                await message.reply(f"回答超时,请重来！")
             logger.error("回答超时！")
         except Exception as err:
             if isinstance(message, CallbackQuery):
-                await message.message.reply(f"机器人按钮回调 Panic 了:\n<code>{err}</code>")
+                await message.message.reply(
+                    f"机器人按钮回调 Panic 了:\n<code>{err}</code>"
+                )
             else:
                 await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
             raise err
 
     return capture
+
+
 # ====== error handle end =========
 
 # ====== Client maker =======
@@ -102,7 +127,7 @@ def makeClient(path: Path) -> Client:
         api_id=API_ID,
         api_hash=API_HASH,
         session_string=session_string,
-        in_memory=True
+        in_memory=True,
     )
 
 
@@ -121,9 +146,13 @@ class CallbackDataQueue(object):
         logger.info(f"new callbackQuery data:{callbackQuery.data}")
         await self.queue.put(callbackQuery)
 
-    async def moniterCallback(self, message: Message, timeout: int = 10) -> CallbackQuery:
+    async def moniterCallback(
+        self, message: Message, timeout: int = 10
+    ) -> CallbackQuery:
         while True:
-            cb: CallbackQuery = await asyncio.wait_for(self.queue.get(), timeout=timeout)
+            cb: CallbackQuery = await asyncio.wait_for(
+                self.queue.get(), timeout=timeout
+            )
             if cb.message.id == message.id:
                 return cb
             else:
@@ -145,18 +174,13 @@ class CallBackData:
 
 
 class Content(object):
-
     ZZFB = "💫自助发布"
     WYCZ = "✨我要充值"
     GRZX = "👩‍🦱个人中心"
 
     def KEYBOARD(self) -> ReplyKeyboardMarkup:
         keyboard = ReplyKeyboardMarkup(
-            [
-                [self.ZZFB, self.WYCZ],
-                [self.GRZX]
-            ],
-            resize_keyboard=True
+            [[self.ZZFB, self.WYCZ], [self.GRZX]], resize_keyboard=True
         )
         return keyboard
 
@@ -205,10 +229,7 @@ class Content(object):
         """添加到频道的按钮"""
         keyboard = InlineKeyboard()
         keyboard.row(
-            InlineButton(
-                text="供给自助发布",
-                url="https://t.me/WFTest8964Bot"
-            ),
+            InlineButton(text="供给自助发布", url="https://t.me/WFTest8964Bot"),
         )
         return keyboard
 
@@ -220,7 +241,9 @@ content = Content()
 # ====== helper function  ====
 
 
-async def askQuestion(queston: str, client: Client, message: Message, timeout: int = 200) -> Union[Message, bool]:
+async def askQuestion(
+    queston: str, client: Client, message: Message, timeout: int = 200
+) -> Union[Message, bool]:
     try:
         ans: Message = await message.chat.ask(queston, timeout=timeout)
         return ans
@@ -251,48 +274,119 @@ engine = create_async_engine(DB_URL, pool_pre_ping=True, pool_recycle=600)
 
 # 会话构造器
 async_session: async_sessionmaker[AsyncSession] = async_sessionmaker(
-    bind=engine, expire_on_commit=False)
+    bind=engine, expire_on_commit=False
+)
 
 
 class Base(AsyncAttrs, DeclarativeBase):
     pass
 
 
+IDPK = Annotated[
+    int,
+    mapped_column(primary_key=True, autoincrement=True, comment="ID主键"),
+]
+
+
 class User(Base):
-    __tablename__ = 'user'
-    __table_args__ = {'comment': '供需机器人用户表'}
+    __tablename__ = "users"
+    __table_args__ = {"comment": "用户表"}
 
-    id: Mapped[int] = mapped_column(
-        Integer(), primary_key=True, comment="系统 ID"
+    # 数据库主键
+    id: Mapped[IDPK]
+
+    # 用户名
+    username: Mapped[str] = mapped_column(
+        String(100), nullable=False, comment="用户名", unique=True
     )
 
-    user_id: Mapped[int] = mapped_column(
-        BigInteger(), comment="用户 ID"
+    # 用户唯一 ID
+    user_id: Mapped[str] = mapped_column(
+        String(100), nullable=False, comment="密码"
     )
 
-    reg_at: Mapped[datetime] = mapped_column(
-        nullable=False, server_default=func.now(), comment='注册时间'
+    amount: Mapped[int] = mapped_column(
+        Integer(), nullable=False, comment="用户余额", default=0
     )
 
-    cion: Mapped[int] = mapped_column(
-        nullable=False, default=100, comment="用户的cion数量"
+    # 注册时间,由数据库生成
+    create_at: Mapped[datetime] = mapped_column(
+        nullable=False,
+        server_default=func.now(),
+        comment="注册时间",
     )
 
-    count: Mapped[int] = mapped_column(
-        nullable=False, default=0, comment="用户的发布次数"
+    msgs: Mapped[List["Msg"]] = relationship(
+        "Msg", backref="users", lazy="subquery"
+    )
+
+
+class Config(Base):
+    __tablename__ = "config"
+    __table_args__ = {"comment": "配置表"}
+
+    admin_password: Mapped[str] = mapped_column(
+        String(100), default="admin", comment="管理员密码"
+    )
+
+    description: Mapped[str] = mapped_column(
+        String(10000),
+        default=StringTemplate.description,
+        comment="机器人 /start 时的描述",
+    )
+
+    provide_desc: Mapped[str] = mapped_column(
+        String(10000),
+        default=StringTemplate.provide_desc,
+        comment="供给方描述",
+    )
+
+    require_desc: Mapped[str] = mapped_column(
+        String(10000),
+        default=StringTemplate.require_desc,
+        comment="需求方描述",
+    )
+
+    send_content: Mapped[str] = mapped_column(
+        String(1000),
+        default=StringTemplate.send_content,
+        comment="发送频道描述",
+    )
+
+    once_cost: Mapped[int] = mapped_column(
+        Integer,
+        default=2,
+        comment="一次发送消耗的 USDT",
+    )
+
+
+class Msg(Base):
+    __tablename__ = "msgs"
+    __table_args__ = {"comment": "发送记录表"}
+
+    # 数据库主键
+    id: Mapped[IDPK]
+
+    user_id: Mapped[str] = mapped_column(
+        String(20), ForeignKey("users.id"), comment="发送的用户ID"
+    )
+
+    content: Mapped[str] = mapped_column(
+        String(1000), comment="发送的内容", nullable=False
     )
 
 
 class SQLManager(object):
-    def __init__(self, AsyncSessionMaker: async_sessionmaker[AsyncSession]) -> None:
+    def __init__(
+        self, AsyncSessionMaker: async_sessionmaker[AsyncSession]
+    ) -> None:
         self.AsyncSessionMaker = AsyncSessionMaker
 
     async def searchUser(self, user_id: int) -> Union[User, None]:
         """根据用户ID 搜索用户"""
         async with self.AsyncSessionMaker() as session:
             result = await session.execute(
-                select(User)
-                .where(User.user_id == user_id)
+                select(User).where(User.user_id == user_id)
             )
             return result.scalar_one_or_none()
 
@@ -320,7 +414,7 @@ class SQLManager(object):
             await session.execute(
                 update(User)
                 .where(User.user_id == user.user_id)
-                .values(cion=raw_cion+cion)
+                .values(cion=raw_cion + cion)
             )
 
             await session.commit()
@@ -336,10 +430,10 @@ class SQLManager(object):
                 await session.execute(
                     update(User)
                     .where(User.user_id == user.user_id)
-                    .values(count=raw_count+count)
+                    .values(count=raw_count + count)
                 )
                 await session.commit()
-                return raw_count+count
+                return raw_count + count
             return raw_count
 
     async def pay(self, user: User, amount: int) -> User:
@@ -363,16 +457,22 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
 
     # 返回
     if callback_query.data == CallBackData.RETURN:
-        await callback_query.message.reply_text(__desc__, reply_markup=content.KEYBOARD())
+        await callback_query.message.reply_text(
+            __desc__, reply_markup=content.KEYBOARD()
+        )
 
 
-@app.on_message(filters=filters.command("start") & filters.private & ~filters.me)
+@app.on_message(
+    filters=filters.command("start") & filters.private & ~filters.me
+)
 @capture_err
 async def start(client: Client, message: Message):
     await message.reply_text(__desc__, reply_markup=content.KEYBOARD())
 
 
-@app.on_message(filters=filters.regex(content.ZZFB) & filters.private & ~filters.me)
+@app.on_message(
+    filters=filters.regex(content.ZZFB) & filters.private & ~filters.me
+)
 @capture_err
 async def sendSupply(client: Client, message: Message):
     await message.reply(
@@ -382,25 +482,25 @@ async def sendSupply(client: Client, message: Message):
                 [
                     InlineKeyboardButton(  # Generates a callback query when pressed
                         "供给模板",
-                        switch_inline_query_current_chat=content.PROVIDE()
+                        switch_inline_query_current_chat=content.PROVIDE(),
                     ),
                     InlineKeyboardButton(  # Generates a callback query when pressed
                         "需求模板",
-                        switch_inline_query_current_chat=content.REQUIRE()
+                        switch_inline_query_current_chat=content.REQUIRE(),
                     ),
                 ],
             ]
-        )
+        ),
     )
 
 
-@app.on_message(filters=filters.regex(r'^@.*') & filters.private & ~filters.me)
+@app.on_message(filters=filters.regex(r"^@.*") & filters.private & ~filters.me)
 @capture_err
 async def atMessage(client: Client, message: Message):
     raw_text = remove_first_line(message.text)
     msg: Message = await message.reply(
         text=f"您的供给需求信息,是否确定发送,发送成功后将扣除 {amount} Cion:\n<code>{raw_text}</code>",
-        reply_markup=content.confirmButton()
+        reply_markup=content.confirmButton(),
     )
     cq: CallbackQuery = await cd.moniterCallback(msg, timeout=20)
 
@@ -414,9 +514,7 @@ async def atMessage(client: Client, message: Message):
 """
 
         await client.send_message(
-            chat_id=CHANNEL_ID,
-            text=text,
-            reply_markup=content.channelButton()
+            chat_id=CHANNEL_ID, text=text, reply_markup=content.channelButton()
         )
 
         user_end = await manager.pay(user=user, amount=-amount)
@@ -425,13 +523,17 @@ async def atMessage(client: Client, message: Message):
         )
 
 
-@app.on_message(filters=filters.regex(content.WYCZ) & filters.private & ~filters.me)
+@app.on_message(
+    filters=filters.regex(content.WYCZ) & filters.private & ~filters.me
+)
 @capture_err
 async def addCion(client: Client, message: Message):
     await message.reply_text("请联系管理员充值")
 
 
-@app.on_message(filters=filters.regex(content.GRZX) & filters.private & ~filters.me)
+@app.on_message(
+    filters=filters.regex(content.GRZX) & filters.private & ~filters.me
+)
 @capture_err
 async def accountCenter(client: Client, message: Message):
     user = await manager.searchUser(user_id=message.from_user.id)
@@ -446,10 +548,7 @@ async def accountCenter(client: Client, message: Message):
 @app.on_message(filters=filters.command("getID") & ~filters.me)
 @capture_err
 async def get_ID(client: Client, message: Message):
-
-    await message.reply(
-        f"当前会话的ID:<code>{message.chat.id}</code>"
-    )
+    await message.reply(f"当前会话的ID:<code>{message.chat.id}</code>")
 
 
 # ==== Handle end =====
@@ -487,6 +586,7 @@ type: {"Bot" if user.is_bot else "User"}
 
     await idle()
     await app.stop()
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()

@@ -9,6 +9,3 @@ aiosqlite
 aiomysql
 pymysql
 orjson
-fastapi-login
-python-multipart
-python-jose[cryptography]

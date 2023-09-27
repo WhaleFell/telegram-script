@@ -1,18 +1,39 @@
 # /bin/python3
 # ===== Sqlalchemy =====
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    AsyncAttrs,
+    async_sessionmaker,
+    AsyncSession,
+)
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, make_transient
 from sqlalchemy.orm import Mapped, mapped_column, relationship, lazyload
-from sqlalchemy import select, insert, String, func, Boolean, text, ForeignKey, delete
+from sqlalchemy import (
+    select,
+    insert,
+    String,
+    func,
+    Boolean,
+    text,
+    ForeignKey,
+    delete,
+)
+
 # ====== sqlalchemy end =====
 
 # ====== pyrogram =======
 import pyromod
 from pyrogram.enums import ParseMode
-from pyrogram.types import Message, InlineKeyboardMarkup, CallbackQuery, BotCommand
+from pyrogram.types import (
+    Message,
+    InlineKeyboardMarkup,
+    CallbackQuery,
+    BotCommand,
+)
 from pyrogram import Client, idle, filters
 from pykeyboard import InlineButton, InlineKeyboard
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
+
 # ====== pyrogram end =====
 
 # ====== Order Library =====
@@ -27,6 +48,7 @@ from typing import List, Union, Any, Optional, Tuple
 from contextlib import closing, suppress
 from datetime import datetime, timedelta
 import os
+
 # ====== Order Lib end =====
 
 
@@ -36,16 +58,16 @@ DEBUG = True
 NAME = os.environ.get("NAME") or "WFTest8964Bot"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = os.environ.get(
-    "DB_URL") or "mysql+aiomysql://root:123456@localhost/tgforward?charset=utf8mb4"
+DB_URL = (
+    os.environ.get("DB_URL")
+    or "mysql+aiomysql://root:123456@localhost/tgforward?charset=utf8mb4"
+)
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
 
 puppet_id: int = "6353451026"  # 傀儡号 ID
-admin_ids: List[int] = [
-    6398941159
-]  # 管理员 ID
+admin_ids: List[int] = [6398941159]  # 管理员 ID
 __desc__ = """
 💫💫💫欢迎使用转载傀儡号管理系统!V2.0💫💫💫
 
@@ -73,7 +95,7 @@ logger.add(
     format="<green>{time:HH:mm:ss}</green> | {name}:{function} {level} | <level>{message}</level>",
     level="DEBUG" if DEBUG else "INFO",
     backtrace=True,
-    diagnose=True
+    diagnose=True,
 )
 # ===== logger end =====
 
@@ -87,9 +109,13 @@ class CallbackDataQueue(object):
     async def addCallback(self, callbackQuery: CallbackQuery):
         await self.queue.put(callbackQuery)
 
-    async def moniterCallback(self, message: Message, timeout: int = 10) -> CallbackQuery:
+    async def moniterCallback(
+        self, message: Message, timeout: int = 10
+    ) -> CallbackQuery:
         while True:
-            cb: CallbackQuery = await asyncio.wait_for(self.queue.get(), timeout=timeout)
+            cb: CallbackQuery = await asyncio.wait_for(
+                self.queue.get(), timeout=timeout
+            )
             if cb.message.id == message.id:
                 return cb
             else:
@@ -105,18 +131,26 @@ cd = CallbackDataQueue()
 
 def capture_err(func):
     """handle error and notice user"""
+
     @wraps(func)
-    async def capture(client: Client, message: Union[Message, CallbackQuery], *args, **kwargs):
+    async def capture(
+        client: Client, message: Union[Message, CallbackQuery], *args, **kwargs
+    ):
         try:
             return await func(client, message, *args, **kwargs)
         except Exception as err:
             if isinstance(message, CallbackQuery):
-                await message.message.reply(f"机器人按钮回调 Panic 了:\n<code>{err}</code>")
+                await message.message.reply(
+                    f"机器人按钮回调 Panic 了:\n<code>{err}</code>"
+                )
             else:
                 await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
             logger.exception(err)
             raise err
+
     return capture
+
+
 # ====== error handle end =========
 
 # ====== Client maker =======
@@ -129,22 +163,19 @@ def makeClient(path: Path) -> Client:
         api_id=API_ID,
         api_hash=API_HASH,
         session_string=session_string,
-        in_memory=True
+        in_memory=True,
     )
 
 
 async def makeSessionString(**kwargs) -> str:
     client = Client(
-        name="test",
-        api_id=API_ID,
-        api_hash=API_HASH,
-        in_memory=True,
-        **kwargs
+        name="test", api_id=API_ID, api_hash=API_HASH, in_memory=True, **kwargs
     )
 
     async with client as c:
         print(await c.export_session_string())
         return await c.export_session_string()
+
 
 app = makeClient(SESSION_PATH)
 
@@ -153,7 +184,12 @@ app = makeClient(SESSION_PATH)
 # ====== helper function  ====
 
 
-async def askQuestion(queston: str, message: Message, client: Optional[Client] = None, timeout: int = 200) -> Union[Message, bool]:
+async def askQuestion(
+    queston: str,
+    message: Message,
+    client: Optional[Client] = None,
+    timeout: int = 200,
+) -> Union[Message, bool]:
     try:
         ans: Message = await message.chat.ask(queston, timeout=timeout)
         return ans
@@ -196,7 +232,8 @@ engine = create_async_engine(DB_URL, pool_pre_ping=True, pool_recycle=600)
 
 # 会话构造器
 async_session: async_sessionmaker[AsyncSession] = async_sessionmaker(
-    bind=engine, expire_on_commit=False)
+    bind=engine, expire_on_commit=False
+)
 
 
 class Base(AsyncAttrs, DeclarativeBase):
@@ -204,28 +241,33 @@ class Base(AsyncAttrs, DeclarativeBase):
 
 
 class User(Base):
-    __tablename__ = 'user'
-    __table_args__ = {'comment': '转载用户表'}
+    __tablename__ = "user"
+    __table_args__ = {"comment": "转载用户表"}
 
     id: Mapped[str] = mapped_column(
-        String(20), primary_key=True, comment="用户 ID")
+        String(20), primary_key=True, comment="用户 ID"
+    )
 
     configs: Mapped[List["TGForwardConfig"]] = relationship(
-        'TGForwardConfig', backref='user', lazy='subquery')
+        "TGForwardConfig", backref="user", lazy="subquery"
+    )
 
     reg_at: Mapped[datetime] = mapped_column(
-        nullable=False, server_default=func.now(), comment='注册时间'
+        nullable=False, server_default=func.now(), comment="注册时间"
     )
     auth_time: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now() + timedelta(days=7), nullable=True, comment='授权时间')
+        default=lambda: datetime.now() + timedelta(days=7),
+        nullable=True,
+        comment="授权时间",
+    )
 
     def __repr__(self):
-        return f'<User(user_id={self.id}, reg_at={self.reg_at}, auth_time={self.auth_time})>'
+        return f"<User(user_id={self.id}, reg_at={self.reg_at}, auth_time={self.auth_time})>"
 
 
 class TGForwardConfig(Base):
     __tablename__ = "forward_configs"
-    __table_args__ = {'comment': '转载配置表'}
+    __table_args__ = {"comment": "转载配置表"}
 
     task_id: Mapped[int] = mapped_column(primary_key=True, comment="任务主键")
     # varchar(20) = String(20) 变长字符串 puppet: 傀儡 /ˈpʌp.ɪt/
@@ -242,28 +284,38 @@ class TGForwardConfig(Base):
     source: Mapped[str] = mapped_column(String(20), comment="源群聊ID")
     dest: Mapped[str] = mapped_column(String(20), comment="目标群聊ID")
     forward_history_count: Mapped[int] = mapped_column(
-        comment="转发历史信息的数量", default=10)
+        comment="转发历史信息的数量", default=10
+    )
     forward_history_state: Mapped[bool] = mapped_column(
-        Boolean(), comment="转发历史信息的状态", nullable=True, default=False)
-    interval_second: Mapped[int] = mapped_column(
-        comment="间隔时间单位 s", default=20)
+        Boolean(), comment="转发历史信息的状态", nullable=True, default=False
+    )
+    interval_second: Mapped[int] = mapped_column(comment="间隔时间单位 s", default=20)
 
     remove_word: Mapped[Optional[str]] = mapped_column(
-        String(100), comment="删除的文字,用,分隔", nullable=True)
+        String(100), comment="删除的文字,用,分隔", nullable=True
+    )
     cut_word: Mapped[Optional[str]] = mapped_column(
-        String(100), comment="截断词,用 , 分隔", nullable=True)
+        String(100), comment="截断词,用 , 分隔", nullable=True
+    )
     skip_word: Mapped[Optional[str]] = mapped_column(
-        String(100), comment="跳过词,用 , 分隔", nullable=True)
+        String(100), comment="跳过词,用 , 分隔", nullable=True
+    )
     add_text: Mapped[Optional[str]] = mapped_column(
-        String(100), comment="跳过语,用 , 分隔", nullable=True)
+        String(100), comment="跳过语,用 , 分隔", nullable=True
+    )
     # 使用 server_default 而不是 default ，因此值将由数据库本身处理。
     create_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), default=None, nullable=False, comment="任务添加的时间"
+        server_default=func.now(),
+        default=None,
+        nullable=False,
+        comment="任务添加的时间",
     )
 
 
 class SQLManager(object):
-    def __init__(self, AsyncSessionMaker: async_sessionmaker[AsyncSession]) -> None:
+    def __init__(
+        self, AsyncSessionMaker: async_sessionmaker[AsyncSession]
+    ) -> None:
         self.AsyncSessionMaker = AsyncSessionMaker
 
     async def selectUserByID(self, id: str) -> Union[User, None]:
@@ -271,10 +323,7 @@ class SQLManager(object):
         # 关系加载技术！
         # https://docs.sqlalchemy.org/en/20/orm/queryguide/relationships.html
         async with self.AsyncSessionMaker() as session:
-            result = await session.execute(
-                select(User)
-                .where(User.id == id)
-            )
+            result = await session.execute(select(User).where(User.id == id))
             result = result.scalar_one_or_none()
             return result
 
@@ -298,21 +347,21 @@ class SQLManager(object):
     async def selectUserConfigs(self, id) -> Union[List[TGForwardConfig], None]:
         """根据用户 ID 选择用户的多个配置"""
         async with self.AsyncSessionMaker() as session:
-            result = await session.scalar(
-                select(User)
-                .where(User.id == id)
-            )
+            result = await session.scalar(select(User).where(User.id == id))
             if result:
                 return result.configs
             else:
                 return None
 
-    async def selectConfigByTaskid(self, task_id: int) -> Union[TGForwardConfig, None]:
+    async def selectConfigByTaskid(
+        self, task_id: int
+    ) -> Union[TGForwardConfig, None]:
         """根据任务 ID 选择任务"""
         async with self.AsyncSessionMaker() as session:
             result = await session.scalar(
-                select(TGForwardConfig)
-                .where(TGForwardConfig.task_id == task_id)
+                select(TGForwardConfig).where(
+                    TGForwardConfig.task_id == task_id
+                )
             )
 
             return result
@@ -321,8 +370,9 @@ class SQLManager(object):
         """根据任务 ID 删除任务"""
         async with self.AsyncSessionMaker() as session:
             await session.execute(
-                delete(TGForwardConfig)
-                .where(TGForwardConfig.task_id == task_id)
+                delete(TGForwardConfig).where(
+                    TGForwardConfig.task_id == task_id
+                )
             )
             await session.commit()
 
@@ -349,41 +399,42 @@ manager = SQLManager(async_session)
 def parser(string: str, message: Message) -> "TGForwardConfig":
     data = {}
 
-    for line in string.split('\n'):
+    for line in string.split("\n"):
         # print(line)
-        match = re.match(r'^@@(.+?)\((.*?)\)=(.*)$', line.strip())
+        match = re.match(r"^@@(.+?)\((.*?)\)=(.*)$", line.strip())
         if match:
             key = match.group(1)
-            required = match.group(2) == '必'
+            required = match.group(2) == "必"
             value = match.group(3).strip()
             # print("key:", key, "required", required, "value:", value)
-            if value == '':
+            if value == "":
                 value = None
             if not value and required:
-                raise ValueError(f'{key} is required but missing')
+                raise ValueError(f"{key} is required but missing")
             data[key] = value
 
     config = TGForwardConfig(
-        forward_history_count=int(data['转载数量']),
-        interval_second=data['转载间隔时间'],
-        source=data['来源群组'],
-        dest=data['目标群组'],
-        remove_word=data['去除词'],
-        cut_word=data['截断词'],
-        skip_word=data['跳过词'],
-        add_text=data['追加文本'],
+        forward_history_count=int(data["转载数量"]),
+        interval_second=data["转载间隔时间"],
+        source=data["来源群组"],
+        dest=data["目标群组"],
+        remove_word=data["去除词"],
+        cut_word=data["截断词"],
+        skip_word=data["跳过词"],
+        add_text=data["追加文本"],
         user_id=message.chat.id,
-        comment=message.text
+        comment=message.text,
     )
 
     return config
+
 
 # ====== db model end ======
 
 # ====== Text Enum ======
 
 
-class CallBackData():
+class CallBackData:
     RETURN = "return"
 
     START_EDITOR = "start/editor/"
@@ -399,25 +450,23 @@ class CallBackData():
 
 
 class Content(object):
-
     def __init__(self) -> None:
         pass
 
     def START_KEYBOARD(self, isAdmin: bool = False) -> InlineKeyboardMarkup:
         keyboard = InlineKeyboard()
         keyboard.row(
-            InlineButton(
-                text="🔄管理转载", callback_data=CallBackData.START_EDITOR),
-            InlineButton(text="➕添加转载", callback_data=CallBackData.START_ADD)
+            InlineButton(text="🔄管理转载", callback_data=CallBackData.START_EDITOR),
+            InlineButton(text="➕添加转载", callback_data=CallBackData.START_ADD),
         )
         keyboard.row(
             InlineButton(
-                text="❤账号信息", callback_data=CallBackData.START_ACCOUNT),
+                text="❤账号信息", callback_data=CallBackData.START_ACCOUNT
+            ),
         )
         if isAdmin:
             keyboard.row(
-                InlineButton(
-                    text="🛑管理员入口", callback_data=CallBackData.ADMIN),
+                InlineButton(text="🛑管理员入口", callback_data=CallBackData.ADMIN),
             )
         return keyboard
 
@@ -435,10 +484,13 @@ class Content(object):
         keyboard.row(
             # TODO: support editor config
             # InlineButton(text="💊编辑", callback_data=CallBackData.QUERY_EDITOR+id)
-            InlineButton(text="💫开始转发历史信息",
-                         callback_data=CallBackData.QUERY_FORWARD+task_id),
             InlineButton(
-                text="❌删除", callback_data=CallBackData.QUERY_DELETED+task_id),
+                text="💫开始转发历史信息",
+                callback_data=CallBackData.QUERY_FORWARD + task_id,
+            ),
+            InlineButton(
+                text="❌删除", callback_data=CallBackData.QUERY_DELETED + task_id
+            ),
         )
 
         keyboard.row(
@@ -505,7 +557,6 @@ id: <code>{self.addCode(config.task_id)} // 任务id
 """
 
     def adminInfo(self, tuple: Tuple[int, int]) -> str:
-
         string = f"""
 当前系统共有 {tuple[0]} 条转发任务
 共有 {tuple[1]} 个用户使用！
@@ -527,25 +578,39 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
     if callback_query.data == CallBackData.RETURN:
         isAdmin = authAdmin(callback_query)
 
-        await callback_query.message.edit(__desc__, reply_markup=content.START_KEYBOARD(isAdmin=isAdmin))
+        await callback_query.message.edit(
+            __desc__, reply_markup=content.START_KEYBOARD(isAdmin=isAdmin)
+        )
         return
 
     # 添加转载
     elif callback_query.data == CallBackData.START_ADD:
         if not await manager.selectUserByID(id=callback_query.from_user.id):
-            await callback_query.message.edit("对不起小姐,没有找到您的账号无法添加任务！请输入 /reg 注册吧!", reply_markup=content.RETURN_KEYBOARD)
+            await callback_query.message.edit(
+                "对不起小姐,没有找到您的账号无法添加任务！请输入 /reg 注册吧!",
+                reply_markup=content.RETURN_KEYBOARD,
+            )
             return
 
-        await callback_query.message.edit(text=content.SET_TIXE, reply_markup=content.RETURN_KEYBOARD)
-        ans: Message = await askQuestion(queston="请在 200s 内发送配置,否则重新开始!", message=callback_query.message)
+        await callback_query.message.edit(
+            text=content.SET_TIXE, reply_markup=content.RETURN_KEYBOARD
+        )
+        ans: Message = await askQuestion(
+            queston="请在 200s 内发送配置,否则重新开始!", message=callback_query.message
+        )
         if ans:
-            comment: Message = await askQuestion(queston="请输入您配置的备注(方便管理)", message=callback_query.message)
+            comment: Message = await askQuestion(
+                queston="请输入您配置的备注(方便管理)", message=callback_query.message
+            )
             if comment:
                 config = parser(ans.text, message=comment)
                 await manager.saveConfig(config)
                 # 将对象转换为无会话状态
                 make_transient(config)
-                await ans.reply(f"配置保存成功!\n{content.RESULT(config)}", reply_markup=content.RETURN_KEYBOARD)
+                await ans.reply(
+                    f"配置保存成功!\n{content.RESULT(config)}",
+                    reply_markup=content.RETURN_KEYBOARD,
+                )
         return
 
     # 账号信息
@@ -553,19 +618,26 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
         user = await manager.selectUserByID(id=callback_query.from_user.id)
 
         if user:
-            await callback_query.message.edit(text=content.GET_USER_INFO(user), reply_markup=content.RETURN_KEYBOARD)
+            await callback_query.message.edit(
+                text=content.GET_USER_INFO(user),
+                reply_markup=content.RETURN_KEYBOARD,
+            )
             return
-        await callback_query.message.edit("对不起小姐,没有找到您的账号请输入 /reg 注册吧!", reply_markup=content.RETURN_KEYBOARD)
+        await callback_query.message.edit(
+            "对不起小姐,没有找到您的账号请输入 /reg 注册吧!", reply_markup=content.RETURN_KEYBOARD
+        )
         return
 
     # 编辑管理转载
     elif callback_query.data == CallBackData.START_EDITOR:
-        configs = await manager.selectUserConfigs(id=callback_query.from_user.id)
+        configs = await manager.selectUserConfigs(
+            id=callback_query.from_user.id
+        )
         if configs:
             array = [
                 (
                     config.comment,
-                    f"{CallBackData.QUERY_PREFIX}/{config.task_id}"
+                    f"{CallBackData.QUERY_PREFIX}/{config.task_id}",
                 )
                 for config in configs
             ]
@@ -575,7 +647,10 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
             await callback_query.message.edit("请选择您要编辑的配置", reply_markup=kbs)
 
         else:
-            await callback_query.message.edit("对不起小姐,没有找到您配置的任何信息,请先配置哦!", reply_markup=content.RETURN_KEYBOARD)
+            await callback_query.message.edit(
+                "对不起小姐,没有找到您配置的任何信息,请先配置哦!",
+                reply_markup=content.RETURN_KEYBOARD,
+            )
 
     # 查询配置
     elif callback_query.data.startswith(CallBackData.QUERY_PREFIX):
@@ -583,36 +658,47 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
 
         config = await manager.selectConfigByTaskid(task_id=task_id)
 
-        await callback_query.message.edit(f"您{config.comment}的配置信息:\n{content.RESULT(config)}", reply_markup=content.QUERY_KEYBOARD(config.task_id))
+        await callback_query.message.edit(
+            f"您{config.comment}的配置信息:\n{content.RESULT(config)}",
+            reply_markup=content.QUERY_KEYBOARD(config.task_id),
+        )
 
     # 删除转载
     elif callback_query.data.startswith(CallBackData.QUERY_DELETED):
         task_id = callback_query.data.split("/")[-1]
         config = await manager.deleteConfigByTaskid(task_id=task_id)
-        await callback_query.message.edit("小姐您任务已成功删除！", reply_markup=content.RETURN_KEYBOARD)
+        await callback_query.message.edit(
+            "小姐您任务已成功删除！", reply_markup=content.RETURN_KEYBOARD
+        )
 
     # 转发历史信息
     elif callback_query.data.startswith(CallBackData.QUERY_FORWARD):
         task_id = callback_query.data.split("/")[-1]
         await client.send_message(
-            chat_id=int(puppet_id),
-            text=f"/forwardHistoryMsg {task_id}"
+            chat_id=int(puppet_id), text=f"/forwardHistoryMsg {task_id}"
         )
 
-        await callback_query.message.edit("您的转发历史信息任务已经开始,稍后您可以在管理页面查看转发状态哟", reply_markup=content.RETURN_KEYBOARD)
+        await callback_query.message.edit(
+            "您的转发历史信息任务已经开始,稍后您可以在管理页面查看转发状态哟",
+            reply_markup=content.RETURN_KEYBOARD,
+        )
 
     elif callback_query.data.startswith(CallBackData.ADMIN):
         if not authAdmin(callback_query):
             return
 
         data = await manager.countTasksUsers()
-        await callback_query.message.edit(content.adminInfo(data), reply_markup=content.RETURN_KEYBOARD)
+        await callback_query.message.edit(
+            content.adminInfo(data), reply_markup=content.RETURN_KEYBOARD
+        )
 
     else:
         logger.error(f"未知的回调数据:{callback_query.data}")
 
 
-@app.on_message(filters=filters.command("start") & filters.private & ~filters.me)
+@app.on_message(
+    filters=filters.command("start") & filters.private & ~filters.me
+)
 @capture_err
 async def start(client: Client, message: Message):
     isAdmin = authAdmin(message)
@@ -624,9 +710,7 @@ async def start(client: Client, message: Message):
 @capture_err
 async def register_user(client: Client, message: Message):
     msg: Message = await message.reply("正在注册用户...")
-    resp = await manager.regUser(
-        User(id=message.chat.id)
-    )
+    resp = await manager.regUser(User(id=message.chat.id))
     await msg.edit_text(f"用户注册成功！\n{content.GET_USER_INFO(resp)}")
 
 
@@ -637,15 +721,15 @@ async def handle_id_command(client: Client, message: Message):
 
     id = await client.get_chat(chat_id=try_int(ans.text))
 
-    await ans.reply(f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>")
+    await ans.reply(
+        f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>"
+    )
 
 
 @app.on_message(filters=filters.command("getID") & ~filters.me)
 @capture_err
 async def get_ID(client: Client, message: Message):
-    await message.reply(
-        f"当前会话的ID:<code>{message.chat.id}</code>"
-    )
+    await message.reply(f"当前会话的ID:<code>{message.chat.id}</code>")
 
 
 # ==== Handle end =====
@@ -679,7 +763,7 @@ type: {"Bot" if user.is_bot else "User"}
         [
             BotCommand("start", "开始页面"),
             BotCommand("reg", "注册账号"),
-            BotCommand("id", "尝试获取 ID")
+            BotCommand("id", "尝试获取 ID"),
         ]
     )
 
@@ -687,6 +771,7 @@ type: {"Bot" if user.is_bot else "User"}
     await app.stop()
     # 数据库
     await engine.dispose()
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()

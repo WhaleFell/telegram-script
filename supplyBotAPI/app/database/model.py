@@ -25,6 +25,7 @@ from sqlalchemy import (
     update,
     String,
     DateTime,
+    Integer,
 )
 
 # sqlalchemy asynchronous support
@@ -43,6 +44,8 @@ from sqlalchemy.orm import (
     relationship,
 )
 
+from .string_template import StringTemplate
+
 # 主键 ID
 # https://docs.sqlalchemy.org/en/20/orm/declarative_tables.html#mapping-whole-column-declarations-to-python-types
 # 将整个列声明映射到 Python 类型
@@ -60,7 +63,6 @@ class Base(AsyncAttrs, DeclarativeBase):
         "mysql_engine": "InnoDB",  # MySQL引擎
         "mysql_charset": "utf8mb4",  # 设置表的字符集
         "mysql_collate": "utf8mb4_general_ci",  # 设置表的校对集
-        # "mysql_comment": "表名备注",  # 设置表名备注
     }
 
 
@@ -71,13 +73,18 @@ class User(Base):
     # 数据库主键
     id: Mapped[IDPK]
 
-    # 用户名唯一
+    # 用户名
     username: Mapped[str] = mapped_column(
         String(100), nullable=False, comment="用户名", unique=True
     )
 
-    password: Mapped[str] = mapped_column(
+    # 用户唯一 ID
+    user_id: Mapped[str] = mapped_column(
         String(100), nullable=False, comment="密码"
+    )
+
+    amount: Mapped[int] = mapped_column(
+        Integer(), nullable=False, comment="用户余额", default=0
     )
 
     # 注册时间,由数据库生成
@@ -87,11 +94,61 @@ class User(Base):
         comment="注册时间",
     )
 
-    def __repr__(self):
-        return f"<User(user_id={self.id}, create_at={self.create_at})>"
+    msgs: Mapped[List["Msg"]] = relationship(
+        "Msg", backref="users", lazy="subquery"
+    )
 
-    def columns_to_dict(self) -> Optional[Dict[str, str]]:
-        dict_ = {}
-        for key in self.__mapper__.c.keys():
-            dict_[key] = getattr(self, key)
-        return dict_
+
+class Config(Base):
+    __tablename__ = "config"
+    __table_args__ = {"comment": "配置表"}
+
+    admin_password: Mapped[str] = mapped_column(
+        String(100), default="admin", comment="管理员密码"
+    )
+
+    description: Mapped[str] = mapped_column(
+        String(10000),
+        default=StringTemplate.description,
+        comment="机器人 /start 时的描述",
+    )
+
+    provide_desc: Mapped[str] = mapped_column(
+        String(10000),
+        default=StringTemplate.provide_desc,
+        comment="供给方描述",
+    )
+
+    require_desc: Mapped[str] = mapped_column(
+        String(10000),
+        default=StringTemplate.require_desc,
+        comment="需求方描述",
+    )
+
+    send_content: Mapped[str] = mapped_column(
+        String(1000),
+        default=StringTemplate.send_content,
+        comment="发送频道描述",
+    )
+
+    once_cost: Mapped[int] = mapped_column(
+        Integer,
+        default=2,
+        comment="一次发送消耗的 USDT",
+    )
+
+
+class Msg(Base):
+    __tablename__ = "msgs"
+    __table_args__ = {"comment": "发送记录表"}
+
+    # 数据库主键
+    id: Mapped[IDPK]
+
+    user_id: Mapped[str] = mapped_column(
+        String(20), ForeignKey("users.id"), comment="发送的用户ID"
+    )
+
+    content: Mapped[str] = mapped_column(
+        String(1000), comment="发送的内容", nullable=False
+    )
