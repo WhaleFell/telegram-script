@@ -144,6 +144,7 @@ async def makeSessionString(**kwargs) -> str:
 
     async with client as c:
         print(await c.export_session_string())
+        return await c.export_session_string()
 
 app = makeClient(SESSION_PATH)
 
@@ -152,7 +153,7 @@ app = makeClient(SESSION_PATH)
 # ====== helper function  ====
 
 
-async def askQuestion(queston: str, message: Message, client: Client = None, timeout: int = 200) -> Union[Message, bool]:
+async def askQuestion(queston: str, message: Message, client: Optional[Client] = None, timeout: int = 200) -> Union[Message, bool]:
     try:
         ans: Message = await message.chat.ask(queston, timeout=timeout)
         return ans
@@ -621,7 +622,7 @@ async def start(client: Client, message: Message):
 
 @app.on_message(filters=filters.command("reg") & filters.private & ~filters.me)
 @capture_err
-async def start(client: Client, message: Message):
+async def register_user(client: Client, message: Message):
     msg: Message = await message.reply("正在注册用户...")
     resp = await manager.regUser(
         User(id=message.chat.id)

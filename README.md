@@ -2,6 +2,8 @@
 
 The Scripts base Pyrogram framework!
 
+恭喜你发现一个价值1k的仓库
+
 ## start
 
 ```shell

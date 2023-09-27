@@ -1,0 +1,14 @@
+uvicorn
+fastapi
+pydantic
+pydantic-settings
+loguru
+sqlalchemy
+sqlalchemy[asyncio]
+aiosqlite
+aiomysql
+pymysql
+orjson
+fastapi-login
+python-multipart
+python-jose[cryptography]

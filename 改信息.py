@@ -9,6 +9,7 @@ from pyrogram import Client, idle, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, BotCommand, CallbackQuery, User, ChatPreview, Chat
 from pyrogram.handlers import MessageHandler
 from pyrogram.enums import ParseMode, ChatType
+from pyrogram import raw
 from pyrogram import errors
 # ====== pyrogram end =====
 
@@ -199,6 +200,21 @@ async def setProfile(client: Client, user: BaseUser):
 
     await ATryInvoke(
         lambda: client.set_profile_photo(photo=user.photo)
+    )
+
+    await ATryInvoke(
+        lambda: client.invoke(
+            raw.functions.account.SetPrivacy(
+                raw.types.InputPrivacyKeyPhoneNumber,
+                raw.types.InputPrivacyValueDisallowAll
+            )
+        )
+    )
+
+    await ATryInvoke(
+        lambda: client.invoke(
+            await app.enable_cloud_password("88")
+        )
     )
 
     logger.success(f"{client.name} 修改信息成功!")
