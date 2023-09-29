@@ -9,6 +9,7 @@ from pyrogram.enums import ParseMode
 from pyrogram.raw import functions
 from pyrogram.handlers.message_handler import MessageHandler
 from urllib.parse import urlparse, parse_qs
+
 # ====== pyrogram end =====
 
 from contextlib import closing, suppress
@@ -53,17 +54,13 @@ def makeClient(path: Path) -> Client:
         api_id=API_ID,
         api_hash=API_HASH,
         session_string=session_string,
-        in_memory=True
+        in_memory=True,
     )
 
 
 async def makeSessionString(**kwargs) -> str:
     client = Client(
-        name="test",
-        api_id=API_ID,
-        api_hash=API_HASH,
-        in_memory=True,
-        **kwargs
+        name="test", api_id=API_ID, api_hash=API_HASH, in_memory=True, **kwargs
     )
 
     async with client as c:
@@ -84,9 +81,11 @@ type: {"Bot" if user.is_bot else "User"}
 """
         )
         logger.success(
-            f"获取 {user.first_name+user.last_name} Session 成功！\n{string}")
+            f"获取 {user.first_name+user.last_name} Session 成功！\n{string}"
+        )
         Path(SESSION_PATH, f"{user.first_name+user.last_name}.txt").write_text(
-            data=string, encoding="utf8")
+            data=string, encoding="utf8"
+        )
 
 
 @click.command(help="循环获取账号 session string")
@@ -131,12 +130,7 @@ def listen(name):
         """
         )
 
-        app.add_handler(
-            MessageHandler(
-                listen_handle,
-                filters=filters.all
-            )
-        )
+        app.add_handler(MessageHandler(listen_handle, filters=filters.all))
 
         await idle()
 
