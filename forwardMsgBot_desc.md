@@ -84,7 +84,7 @@ git+https://github.com/usernein/pyromod.git
 # 机器人管理,须在代码中配置管理员和傀儡号
 docker run -d --name=forwardAdminBot \
 -e DB_URL="mysql+aiomysql://root:lovehyy@172.18.0.6/tgforward?charset=utf8mb4" \
--e NAME=WFTest8964Bot \
+-e NAME=bot \
 -v /wfwork/telegram-script:/wkdir/ \
 -v /wfwork/telegram-script/sessions:/wkdir/sessions \
 tgbase python -u forwardBotAdmin.py

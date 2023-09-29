@@ -45,8 +45,7 @@ DB_URL=mysql+aiomysql://root:lovehyy@localhost:3388/tgforward?charset=utf8mb4
 
 docker pull mysql:5.7
 
-docker run --privileged=true -d --name=mysql5.7 \
--p 3388:3306 \
+docker run --privileged=true -d --name=mysql \
 -e MYSQL_ROOT_PASSWORD=lovehyy \
 -e MYSQL_DATABASE=tgforward \
 -v /wfwork/mysql/data:/var/lib/mysql \
@@ -64,16 +63,16 @@ FLUSH PRIVILEGES;
 
 docker run -d --name=forward_admin_bot \
 -e NAME="bot" \
--e DB_URL="mysql+aiomysql://root:lovehyy@172.17.0.2:3306/tgforward?charset=utf8mb4" \
--v /wfwork/tgbot_base/telegram-script/forwardBotAdmin.py:/wkdir/main.py \
--v /wfwork/tgbot_base/telegram-script/sessions:/wkdir/sessions \
-tgbot_base python -u main.py
+-e DB_URL="mysql+aiomysql://root:lovehyy@172.17.0.4:3306/tgforward?charset=utf8mb4" \
+-v /wfwork/telegram-script/forwardBotAdmin.py:/wkdir/main.py \
+-v /wfwork/telegram-script/sessions:/wkdir/sessions \
+tgbase python -u main.py
 
 
 docker run -d --name=forward_puppet_uesr628 \
 -e NAME="user628" \
--e DB_URL="mysql+aiomysql://root:lovehyy@172.17.0.2:3306/tgforward?charset=utf8mb4" \
--v /wfwork/tgbot_base/telegram-script/forwardMsgBot.py:/wkdir/main.py \
--v /wfwork/tgbot_base/telegram-script/sessions:/wkdir/sessions \
-tgbot_base python -u main.py
+-e DB_URL="mysql+aiomysql://root:lovehyy@172.17.0.4:3306/tgforward?charset=utf8mb4" \
+-v /wfwork/telegram-script/forwardMsgBot.py:/wkdir/main.py \
+-v /wfwork/telegram-script/sessions:/wkdir/sessions \
+tgbase python -u main.py
 ```
