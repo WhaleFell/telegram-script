@@ -78,7 +78,9 @@ sqlalchemy
 git+https://github.com/usernein/pyromod.git
 ```
 
+## Install by Docker
+
 ```shell
-docker run -d --name tgAutoReply -v /wfwork/tgbot_base/:/wkdir/ tgbot_base python -u autoReply.py
+
 
 ```
