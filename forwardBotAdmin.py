@@ -30,7 +30,7 @@ from pyrogram.types import (
     CallbackQuery,
     BotCommand,
 )
-from pyrogram import Client, idle, filters
+from pyrogram import Client, idle, filters  # type:ignore
 from pykeyboard import InlineButton, InlineKeyboard
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
 
@@ -191,7 +191,9 @@ async def askQuestion(
     timeout: int = 200,
 ) -> Union[Message, bool]:
     try:
-        ans: Message = await message.chat.ask(queston, timeout=timeout)
+        ans: Message = await message.chat.ask(  # type:ignore
+            queston, timeout=timeout
+        )  # type:ignore
         return ans
     except pyromod.listen.ListenerTimeout:
         await message.reply(f"超时 {timeout}s,请重新开始")
@@ -219,7 +221,7 @@ def authAdmin(message: Union[Message, CallbackQuery, str, int]) -> bool:
         if id in admin_ids:
             return True
 
-    if message.from_user.id in admin_ids:
+    if message.from_user.id in admin_ids:  # type: ignore
         return True
 
     return False
@@ -334,7 +336,7 @@ class SQLManager(object):
             if not result:
                 session.add(user)
                 await session.commit()
-                return await self.selectUserByID(id=user.id)
+                return await self.selectUserByID(id=user.id)  # type:ignore
             else:
                 return result
 
@@ -376,7 +378,7 @@ class SQLManager(object):
             )
             await session.commit()
 
-    async def countTasksUsers(self) -> Tuple[int, int]:
+    async def countTasksUsers(self) -> Tuple[Optional[int], Optional[int]]:
         """统计系统总任务,总用户 数量"""
         async with self.AsyncSessionMaker() as session:
             config_count = await session.execute(
@@ -499,7 +501,7 @@ class Content(object):
 
         return keyboard
 
-    def addCode(self, code: str):
+    def addCode(self, code: Any):
         return f"<code>{code}</code>"
 
     def GET_USER_INFO(self, user: User) -> str:
@@ -585,7 +587,7 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
 
     # 添加转载
     elif callback_query.data == CallBackData.START_ADD:
-        if not await manager.selectUserByID(id=callback_query.from_user.id):
+        if not await manager.selectUserByID(id=callback_query.from_user.id):  # type: ignore
             await callback_query.message.edit(
                 "对不起小姐,没有找到您的账号无法添加任务！请输入 /reg 注册吧!",
                 reply_markup=content.RETURN_KEYBOARD,
@@ -596,11 +598,11 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
             text=content.SET_TIXE, reply_markup=content.RETURN_KEYBOARD
         )
         ans: Message = await askQuestion(
-            queston="请在 200s 内发送配置,否则重新开始!", message=callback_query.message
+            queston="请在 200s 内发送配置,否则重新开始!", message=callback_query.message  # type: ignore
         )
         if ans:
             comment: Message = await askQuestion(
-                queston="请输入您配置的备注(方便管理)", message=callback_query.message
+                queston="请输入您配置的备注(方便管理)", message=callback_query.message  # type: ignore
             )
             if comment:
                 config = parser(ans.text, message=comment)
@@ -615,7 +617,7 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
 
     # 账号信息
     elif callback_query.data == CallBackData.START_ACCOUNT:
-        user = await manager.selectUserByID(id=callback_query.from_user.id)
+        user = await manager.selectUserByID(id=callback_query.from_user.id)  # type: ignore
 
         if user:
             await callback_query.message.edit(
@@ -653,27 +655,27 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
             )
 
     # 查询配置
-    elif callback_query.data.startswith(CallBackData.QUERY_PREFIX):
-        task_id = callback_query.data.split("/")[-1]
+    elif callback_query.data.startswith(CallBackData.QUERY_PREFIX):  # type: ignore
+        task_id = callback_query.data.split("/")[-1]  # type: ignore
 
-        config = await manager.selectConfigByTaskid(task_id=task_id)
+        config = await manager.selectConfigByTaskid(task_id=task_id)  # type: ignore
 
         await callback_query.message.edit(
-            f"您{config.comment}的配置信息:\n{content.RESULT(config)}",
-            reply_markup=content.QUERY_KEYBOARD(config.task_id),
+            f"您{config.comment}的配置信息:\n{content.RESULT(config)}",  # type: ignore
+            reply_markup=content.QUERY_KEYBOARD(config.task_id),  # type: ignore
         )
 
     # 删除转载
-    elif callback_query.data.startswith(CallBackData.QUERY_DELETED):
-        task_id = callback_query.data.split("/")[-1]
-        config = await manager.deleteConfigByTaskid(task_id=task_id)
+    elif callback_query.data.startswith(CallBackData.QUERY_DELETED):  # type: ignore
+        task_id = callback_query.data.split("/")[-1]  # type: ignore
+        config = await manager.deleteConfigByTaskid(task_id=task_id)  # type: ignore
         await callback_query.message.edit(
             "小姐您任务已成功删除！", reply_markup=content.RETURN_KEYBOARD
         )
 
     # 转发历史信息
-    elif callback_query.data.startswith(CallBackData.QUERY_FORWARD):
-        task_id = callback_query.data.split("/")[-1]
+    elif callback_query.data.startswith(CallBackData.QUERY_FORWARD):  # type: ignore
+        task_id = callback_query.data.split("/")[-1]  # type: ignore
         await client.send_message(
             chat_id=int(puppet_id), text=f"/forwardHistoryMsg {task_id}"
         )
@@ -683,13 +685,13 @@ async def handle_callback_query(client: Client, callback_query: CallbackQuery):
             reply_markup=content.RETURN_KEYBOARD,
         )
 
-    elif callback_query.data.startswith(CallBackData.ADMIN):
+    elif callback_query.data.startswith(CallBackData.ADMIN):  # type: ignore
         if not authAdmin(callback_query):
             return
 
         data = await manager.countTasksUsers()
         await callback_query.message.edit(
-            content.adminInfo(data), reply_markup=content.RETURN_KEYBOARD
+            content.adminInfo(data), reply_markup=content.RETURN_KEYBOARD  # type: ignore
         )
 
     else:
@@ -717,12 +719,12 @@ async def register_user(client: Client, message: Message):
 @app.on_message(filters=filters.command("id") & filters.private & ~filters.me)
 @capture_err
 async def handle_id_command(client: Client, message: Message):
-    ans: Message = await askQuestion("请输入用户名、邀请链接等，机器人会尝试获取id", message=message)
+    ans: Message = await askQuestion("请输入用户名、邀请链接等，机器人会尝试获取id", message=message)  # type: ignore
 
     id = await client.get_chat(chat_id=try_int(ans.text))
 
     await ans.reply(
-        f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>"
+        f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>"  # type: ignore
     )
 
 
