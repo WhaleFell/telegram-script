@@ -66,7 +66,7 @@ API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
 
-puppet_id: int = "6353451026"  # 傀儡号 ID
+puppet_id: str = "6353451026"  # 傀儡号 ID
 admin_ids: List[int] = [6398941159]  # 管理员 ID
 __desc__ = """
 💫💫💫欢迎使用转载傀儡号管理系统!V2.0💫💫💫

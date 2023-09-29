@@ -1,9 +1,8 @@
 from pyrogram import Client, filters, idle
 from pyrogram.types import Message, BotCommand
 from pyrogram.handlers import MessageHandler, inline_query_handler
-# https://github.com/Ripeey/Conversation-Pyrogram/ 对话模块
-# pip install git+https://github.com/Ripeey/Conversation-Pyrogram
-from convopyro import Conversation
+
+
 import os
 import datetime
 from flask import Flask, request
@@ -35,7 +34,7 @@ file_desc = """
 """
 # 机器人描述,发送 /start 时候
 bot_desc = """
-欢迎使用小月网推文件助手
+欢迎使用网络推毒助手
 教程：/gm+空格+毒包名
 做单群：https://t.me/+0r12nkfObRQ5YTM9
 """
@@ -44,16 +43,24 @@ webapp = True
 # 自动答复列表
 # {command:"需要触发的命令(不用加 /)","text":”触发命令后的回复信息“}
 custom_AQs = [
-    {"command": "jdgs", "text": "渠道：\n行业：\n微信号：\n微信名字：\n电话：\n地区：\n交单人：\n单数：\n文件：", "desc": "获取交单格式"},
-    {"command": "jjff", "text": "弹窗解决方法频道： \n https://t.me/+wY8Wx6M_a5BlMGU1",
-        "desc": "查看各种弹窗解决方法"},
-    {"command": "xsjc", "text": "新手教程频道： \n https://t.me/+5NRMXo6d_EM0Y2Rl", "desc": "查看新手教程"},
-
+    {
+        "command": "jdgs",
+        "text": "渠道：\n行业：\n微信号：\n微信名字：\n电话：\n地区：\n交单人：\n单数：\n文件：",
+        "desc": "获取交单格式",
+    },
+    {
+        "command": "jjff",
+        "text": "弹窗解决方法频道： \n https://t.me/+wY8Wx6M_a5BlMGU1",
+        "desc": "查看各种弹窗解决方法",
+    },
+    {
+        "command": "xsjc",
+        "text": "新手教程频道： \n https://t.me/+5NRMXo6d_EM0Y2Rl",
+        "desc": "查看新手教程",
+    },
 ]
 # 管理员 id 可以更改关键词回复
-admins = [
-
-]
+admins = []
 
 # ====== 以下代码蕴含丰富的能量,牵一发而动全身,请勿改动 =======
 #     ____  __     __  _____   _    _   _____   _   _
@@ -99,8 +106,7 @@ class CustomCommand(BaseModel):
 
 
 custom_commands: List[CustomCommand] = [
-    CustomCommand(**custom_AQ)
-    for custom_AQ in custom_AQs
+    CustomCommand(**custom_AQ) for custom_AQ in custom_AQs
 ]
 
 
@@ -108,21 +114,21 @@ web = Flask(__name__)
 DEBUG = True
 
 
-@web.route('/', methods=['GET', 'POST'])
+@web.route("/", methods=["GET", "POST"])
 def upload_file():
-    if request.method == 'POST':
-        file = request.files['file']
+    if request.method == "POST":
+        file = request.files["file"]
         if file:
-            filename = 'file.zip'
+            filename = "file.zip"
             file.save(os.path.join(web.root_path, filename))
-            return '文件上传成功并保存为 file.zip'
-    return '''
+            return "文件上传成功并保存为 file.zip"
+    return """
     <h1>上传文件</h1>
     <form method="post" enctype="multipart/form-data">
         <input type="file" name="file">
         <input type="submit" value="上传">
     </form>
-    '''
+    """
 
 
 command_list: List[BotCommand] = [
@@ -150,12 +156,9 @@ def is_empty_string(string, specified_variable):
 
 
 async def filtersNoRule(app: Client, message: Message):
-    file_name = message.text.split(
-        f"/gm")[1].strip()
+    file_name = message.text.split(f"/gm")[1].strip()
     if is_empty_string(file_name, f"@{me.username}"):
-        await message.reply(
-            text="请以 /gm+空格+要改的毒包名字的格式发给我"
-        )
+        await message.reply(text="请以 /gm+空格+要改的毒包名字的格式发给我")
         return False
     return file_name
 
@@ -207,16 +210,18 @@ async def handle_admin_message(client: Client, message: Message):
     question = await client.send_message(
         message.chat.id,
         "已设置关键词:%s\n如果需要更改添加关键词,请在60s内回复关键词....",
-        reply_to_message_id=message.id
+        reply_to_message_id=message.id,
     )
 
-    resp = await client.listen.Message(filters.text, id=filters.user(message.from_user.id), timeout=60)
+    resp = await client.listen.Message(
+        filters.text, id=filters.user(message.from_user.id), timeout=60
+    )
     if resp:
         key = resp.text
         await client.send_message(
             message.chat.id,
             "关键词:%s\n请在50s内....",
-            reply_to_message_id=message.id
+            reply_to_message_id=message.id,
         )
 
 
@@ -228,7 +233,7 @@ async def handle_all_text_message(client: Client, message: Message):
             await client.send_message(
                 chat_id=message.chat.id,
                 text=text,
-                reply_to_message_id=message.id
+                reply_to_message_id=message.id,
             )
 
 
@@ -237,9 +242,7 @@ async def handle_start_command(client: Client, message: Message):
     await setBotCommands(app)
     print(f"handle /start from:{message.chat.username}")
     await client.send_message(
-        chat_id=message.chat.id,
-        text=bot_desc,
-        reply_to_message_id=message.id
+        chat_id=message.chat.id, text=bot_desc, reply_to_message_id=message.id
     )
 
 
@@ -261,7 +264,7 @@ async def handle_private_message(client: Client, message: Message):
         document=file_content,
         file_name="%s.zip" % file_name,
         caption=file_desc.format(update_time=get_file_modified_time(fileName)),
-        reply_to_message_id=message.id
+        reply_to_message_id=message.id,
     )
 
 
@@ -285,7 +288,7 @@ async def handle_group_message(client: Client, message: Message):
         document=file_content,
         file_name="%s.zip" % file_name,
         caption=file_desc.format(update_time=get_file_modified_time(fileName)),
-        reply_to_message_id=message.id
+        reply_to_message_id=message.id,
     )
 
 
@@ -295,10 +298,11 @@ def mk_custom_answer_handle(customText: str) -> asyncio.coroutines:
         await client.send_message(
             chat_id=message.chat.id,
             text=customText,
-            reply_to_message_id=message.id
+            reply_to_message_id=message.id,
         )
 
     return customHandle
+
 
 # ============ handle ending ===============
 
@@ -326,7 +330,7 @@ async def handle_hacker_command(client: Client, message: Message):
     await client.send_message(
         chat_id=message.chat.id,
         text=f"test state: {hack}",
-        reply_to_message_id=message.id
+        reply_to_message_id=message.id,
     )
 
 
@@ -349,13 +353,17 @@ class DBEec(object):
         self.keys_cache = await self.get_all_key()
 
     async def init(self):
-        await self.conn.execute('''CREATE TABLE IF NOT EXISTS tg_keyword
-                            (key TEXT PRIMARY KEY, text TEXT)''')
+        await self.conn.execute(
+            """CREATE TABLE IF NOT EXISTS tg_keyword
+                            (key TEXT PRIMARY KEY, text TEXT)"""
+        )
         await self.conn.commit()
         await self.refresh_keysCashe()
 
     async def query_text(self, key: str) -> Union[str, None]:
-        async with self.conn.execute("SELECT text FROM tg_keyword WHERE key=?", (key,)) as db:
+        async with self.conn.execute(
+            "SELECT text FROM tg_keyword WHERE key=?", (key,)
+        ) as db:
             result = await db.fetchone()
             if result:
                 return result[0]
@@ -364,14 +372,14 @@ class DBEec(object):
 
     async def update_text(self, key: str, text: str):
         await self.conn.execute(
-            "INSERT OR REPLACE INTO tg_keyword(key, text) VALUES (?, ?)", (
-                key, text)
+            "INSERT OR REPLACE INTO tg_keyword(key, text) VALUES (?, ?)",
+            (key, text),
         )
         await self.conn.commit()
         await self.refresh_keysCashe()
 
     async def get_all_key(self) -> List[str]:
-        async with self.conn.execute('SELECT key FROM tg_keyword') as db:
+        async with self.conn.execute("SELECT key FROM tg_keyword") as db:
             return await db.fetchall()
 
     async def __del__(self):
@@ -387,17 +395,19 @@ async def run_tg_app():
         app = Client(
             "user_bot",
             api_id="21341224",
-            api_hash="2d910cf3998019516d6d4bbb53713f20"
+            api_hash="2d910cf3998019516d6d4bbb53713f20",
         )
     else:
         app = Client(
             "my_bot",
             bot_token=botToken,
             api_id="21341224",
-            api_hash="2d910cf3998019516d6d4bbb53713f20"
+            api_hash="2d910cf3998019516d6d4bbb53713f20",
         )
 
-    db = await aiosqlite.connect(str(Path(ROOTPATH, "key.db")), check_same_thread=False)
+    db = await aiosqlite.connect(
+        str(Path(ROOTPATH, "key.db")), check_same_thread=False
+    )
     dbc = DBEec(db)
     if not Path(ROOTPATH, "key.db").exists():
         await dbc.init()
@@ -411,52 +421,46 @@ async def run_tg_app():
     app.add_handler(
         MessageHandler(
             handle_start_command,
-            filters=filters.text & filters.command("start")
+            filters=filters.text & filters.command("start"),
         )
     )
 
     app.add_handler(
         MessageHandler(
             handle_admin_message,
-            filters=filters.text & filters.private & filters.command("/admin")
+            filters=filters.text & filters.private & filters.command("/admin"),
         )
     )
 
     app.add_handler(
         MessageHandler(
             handle_private_message,
-            filters=filters.private & filters.text & filters.command("gm")
+            filters=filters.private & filters.text & filters.command("gm"),
         )
     )
 
     app.add_handler(
         MessageHandler(
             handle_group_message,
-            filters=filters.group & filters.text & filters.command("gm")
+            filters=filters.group & filters.text & filters.command("gm"),
         )
     )
 
     app.add_handler(
         MessageHandler(
             handle_hacker_command,
-            filters=filters.text & filters.command("test")
+            filters=filters.text & filters.command("test"),
         )
     )
 
     # 监听所有文字信息
     app.add_handler(
-        MessageHandler(
-            handle_all_text_message,
-            filters=filters.text
-        )
+        MessageHandler(handle_all_text_message, filters=filters.text)
     )
 
     # admin
     app.add_handler(
-        MessageHandler(
-            handle_all_text_message,
-            filters=filters.chat(admins)
-        )
+        MessageHandler(handle_all_text_message, filters=filters.chat(admins))
     )
 
     # 自定义命令
@@ -464,12 +468,10 @@ async def run_tg_app():
         app.add_handler(
             MessageHandler(
                 mk_custom_answer_handle(cc.text),
-                filters=filters.command(cc.command)
+                filters=filters.command(cc.command),
             )
         )
-        command_list.append(
-            BotCommand(command=cc.command, description=cc.desc)
-        )
+        command_list.append(BotCommand(command=cc.command, description=cc.desc))
         print(f"add custom AQ: /{cc.command} -> {cc.text}  desc: {cc.desc}")
 
     await app.set_bot_commands(command_list)
@@ -479,11 +481,9 @@ async def run_tg_app():
 
 def run_flask_app():
     # 设置日志级别为 ERROR，禁止输出 INFO 级别及以上的日志
-    log = logging.getLogger('werkzeug')
+    log = logging.getLogger("werkzeug")
     log.setLevel(logging.ERROR)
-    web.run(
-        host="0.0.0.0"
-    )
+    web.run(host="0.0.0.0")
 
 
 if __name__ == "__main__":
