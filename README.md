@@ -14,6 +14,7 @@ docker build . -t tgbase
 docker run -d --name=qfxx \
 -v /root/新币/群发消息9.17号.py:/wkdir/main.py \
 -v /root/新币/sessions:/wkdir/sessions \
+-v /root/新币/content.txt:/wkdir/content.txt \
 tgbase python -u main.py
 
 docker logs -f getRedpacketBulk
