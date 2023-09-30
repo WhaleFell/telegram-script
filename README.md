@@ -11,10 +11,10 @@ git clone https://github.com/WhaleFell/telegram-script.git
 cd telegram-script
 docker build . -t tgbase
 
-docker run -d --name=bulkReportUser \
--v /wfwork/telegram-script:/wkdir/ \
--v /root/snap/脚本/举报脚本/sessions:/wkdir/sessions \
-tgbase python -u bulkReportUser.py start "@shenxian"
+docker run -d --name=qfxx \
+-v /root/新币/群发消息9.17号.py:/wkdir/main.py \
+-v /root/新币/sessions:/wkdir/sessions \
+tgbase python -u main.py
 
 docker logs -f getRedpacketBulk
 

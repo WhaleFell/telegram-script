@@ -7,6 +7,7 @@ aiomysql
 aiosqlite
 click
 httpx
+tenacity
 
 
 # pyromod
