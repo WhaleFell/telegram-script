@@ -68,10 +68,10 @@ tgbot_base python -u main.py
 
 # 抢注名字程序
 docker run -d --name=robGroupName \
--e NAME="文件名称" \
--v 替换为脚本绝对目录:/wkdir/main.py \
--v 替换为Session文件夹绝对目录:/wkdir/sessions \
-tgbot_base python -u main.py
+-e NAME="robUser" \
+-v /wfwork/telegram-script/robGroupName.py:/wkdir/main.py \
+-v /wfwork/telegram-script/sessions:/wkdir/sessions \
+tgbase python -u main.py
 
 # 查看日志
 docker logs -f robGroupName
