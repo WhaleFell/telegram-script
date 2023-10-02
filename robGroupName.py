@@ -37,10 +37,10 @@ API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_FOLDER = Path(ROOTPATH, "sessions")
 SESSION_PATH: Path = Path(SESSION_FOLDER, f"{NAME}.txt")
 
-# 需要监控的名称
-ROB_GROUP_NAME = ["ceshi060", "Dksksjsjskdm"]
+# 需要监控的名称 @xuncha  @baobei @heshi @hexiao
+ROB_GROUP_NAME = ["xuncha", "baobei", "heshi", "hexiao"]
 # 需要设置群名称的群,抢注通知 -1001963862221
-GROUP_ID: int = -1001963862221
+GROUP_ID: int = -1001833946235
 __desc__ = """
 群组名字抢注程序
 """
