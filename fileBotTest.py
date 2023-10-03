@@ -1,16 +1,4 @@
-# ===== Sqlalchemy =====
-from sqlalchemy import select, insert, String, func
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
-from sqlalchemy.ext.asyncio import (
-    create_async_engine,
-    AsyncAttrs,
-    async_sessionmaker,
-    AsyncSession,
-)
-from datetime import datetime
-
-# ====== sqlalchemy end =====
+# file bot test
 
 # ====== pyrogram =======
 import pyromod
@@ -23,12 +11,12 @@ from pyrogram.types import (
     CallbackQuery,
 )
 from pyrogram.handlers import MessageHandler  # type:ignore
-from pyrogram.enums import ParseMode
+from pyrogram.enums import ParseMode, MessageMediaType
 
 # ====== pyrogram end =====
 
 from contextlib import closing, suppress
-from typing import List, Union, Any, Optional
+from typing import List, Union, Any, Optional, BinaryIO
 from pathlib import Path
 import asyncio
 from loguru import logger
@@ -42,15 +30,15 @@ import glob
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
 DEBUG = True
-NAME = os.environ.get("NAME") or "bot"
+NAME = os.environ.get("NAME") or "WFTest8964Bot"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = "mysql+aiomysql://root:123456@localhost/tgconfigs?charset=utf8mb4"
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
-SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
+SESSION_PATH: Path = Path(ROOTPATH, "sessions_back2", f"{NAME}.txt")
 __desc__ = """
-这是一个 telegram pyrogram 机器人单文件编程模板,个人自用
+TG 文件测试
+
 """
 # ====== Config End ======
 
@@ -180,6 +168,39 @@ def try_int(string: str) -> Union[str, int]:
 @capture_err
 async def start(client: Client, message: Message):
     await message.reply_text(__desc__)
+
+
+@app.on_message(filters=filters.command("file") & filters.private & ~filters.me)
+@capture_err
+async def handle_file(client: Client, message: Message):
+    media_msg: Optional[Message] = await askQuestion(
+        queston="请发送一个 sticker photo video", client=client, message=message
+    )
+    if media_msg:
+        if media_msg.media == MessageMediaType.STICKER:
+            file_id = media_msg.sticker.file_id
+            file_byte: Union[BinaryIO, str, None] = await client.download_media(
+                message=file_id, in_memory=True, file_name="test.jpg"
+            )
+            if file_byte:
+                return await client.send_photo(
+                    chat_id=message.chat.id,
+                    photo=file_byte,
+                    caption="这是你发送的贴纸图片",
+                )
+
+        elif media_msg.media == MessageMediaType.PHOTO:
+            file_id = media_msg.photo.file_id
+            return await client.send_photo(
+                chat_id=message.chat.id, photo=file_id, caption="发送的图片"
+            )
+        elif media_msg.media == MessageMediaType.VIDEO:
+            file_id = media_msg.video.file_id
+            return await client.send_video(
+                chat_id=message.chat.id, video=file_id, caption="这是你发送的视频"
+            )
+
+        return await message.reply(text="无法检测到 sticker photo video")
 
 
 @app.on_message(filters=filters.command("id") & filters.private & ~filters.me)

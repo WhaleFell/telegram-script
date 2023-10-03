@@ -17,7 +17,7 @@ Commands:
 # ====== pyrogram =======
 import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
-from pyrogram import Client, idle, filters
+from pyrogram import Client, idle, filters  # type:ignore
 from pyrogram.types import Message, InlineKeyboardMarkup, User
 from pyrogram.enums import ParseMode
 from pyrogram.raw import functions
@@ -228,9 +228,9 @@ cli.add_command(listenTGcode)
 
 
 if __name__ == "__main__":
-    cli()
-    # asyncio.run(
-    #     makeSessionString(
-    #         bot_token="6038643306:AAGsLaceC5DVgfN_BydRgbpxgqJgWfAg9xI"
-    #     )
-    # )
+    # cli()
+    asyncio.run(
+        makeSessionString(
+            bot_token="6399214671:AAHGXXYA-agrAewUQufvZJu2MQpdGGSjA4Y"
+        )
+    )
