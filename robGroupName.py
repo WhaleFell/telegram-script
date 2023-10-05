@@ -37,8 +37,17 @@ API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_FOLDER = Path(ROOTPATH, "sessions")
 SESSION_PATH: Path = Path(SESSION_FOLDER, f"{NAME}.txt")
 
-# 需要监控的名称 @xuncha  @baobei @heshi @hexiao
-ROB_GROUP_NAME = ["xuncha", "baobei", "heshi", "hexiao"]
+# 需要监控的名称 @xuncha  @baobei @heshi @hexiao  @baiye  @shiming @hexiao  @wangbo
+ROB_GROUP_NAME = [
+    "xuncha",
+    "baobei",
+    "heshi",
+    "hexiao",
+    "baiye",
+    "shiming",
+    "hexiao",
+    "wangbo",
+]
 # 需要设置群名称的群,抢注通知 -1001963862221
 GROUP_ID: int = -1001833946235
 __desc__ = """
@@ -153,7 +162,7 @@ class CheckNameExist(object):
                 return
 
             logger.info(f"{name} 不可用！")
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(5)
 
     async def multiLoopCheck(self, names: List[str]):
         current_loop = asyncio.get_running_loop()
@@ -218,7 +227,9 @@ type: {"Bot" if user.is_bot else "User"}
 """
     )
     await app.send_message(chat_id=GROUP_ID, text=f"开始抢注以下名称:{ROB_GROUP_NAME}")
+    # 检测协程
     await checker.multiLoopCheck(ROB_GROUP_NAME)
+    # 设置协程
     await setGroupLinkLoop(app, checker.availableQueue)
 
     # ===== Test Code =======
