@@ -27,6 +27,7 @@ import sys
 import glob
 import httpx
 from httpx import Limits
+import random
 
 # ====== Config ========
 ROOTPATH: Path = Path(__file__).parent.absolute()
@@ -162,7 +163,7 @@ class CheckNameExist(object):
                 return
 
             logger.info(f"{name} 不可用！")
-            await asyncio.sleep(5)
+            await asyncio.sleep(random.randint(1, 5))
 
     async def multiLoopCheck(self, names: List[str]):
         current_loop = asyncio.get_running_loop()
