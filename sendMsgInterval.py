@@ -173,10 +173,13 @@ async def main():
             continue
 
     while True:
-        for login_app in login_apps:
-            for config in configs:
-                # asyncio.ensure_future(IntervalSend(app, config=config)) # 同时发
-                await IntervalSend(login_app, config=config)
+        try:
+            for login_app in login_apps:
+                for config in configs:
+                    # asyncio.ensure_future(IntervalSend(app, config=config)) # 同时发
+                    await IntervalSend(login_app, config=config)
+        except KeyboardInterrupt:
+            break
 
     await idle()
     for app in login_apps:
