@@ -126,21 +126,18 @@ def loadCSVConfig() -> List[Config]:
 
 
 async def IntervalSend(client: Client, config: Config):
-    logger.info(
-        f"{client.name} ADD Task {config.group_id} ==> {config.content} interval(s): {config.interval}s"
-    )
-    while True:
-        try:
-            await client.send_message(
-                chat_id=config.group_id, text=config.content
-            )
-            await asyncio.sleep(delay=config.interval)
-            logger.success(
-                f"{client.name} 发送 {config.group_id} ==> {config.content}"
-            )
-        except Exception as exc:
-            logger.error(f"{client.name} 发送 {config.group_id} 错误!{exc}")
-            await asyncio.sleep(delay=config.interval)
+    # logger.info(
+    #     f"{client.name} ADD Task {config.group_id} ==> {config.content} interval(s): {config.interval}s"
+    # )
+    try:
+        await client.send_message(chat_id=config.group_id, text=config.content)
+        await asyncio.sleep(delay=config.interval)
+        logger.success(
+            f"{client.name} 发送 {config.group_id} ==> {config.content}"
+        )
+    except Exception as exc:
+        logger.error(f"{client.name} 发送 {config.group_id} 错误!{exc}")
+        await asyncio.sleep(delay=config.interval)
 
 
 # ====== helper function end ====
@@ -162,26 +159,27 @@ async def main():
 
     apps = loadClientsInFolder()
 
+    login_apps = []
     for app in apps:
         try:
             await app.start()
             user = await app.get_me()
+            logger.success(
+                f"Login {user.first_name} {'@None' if not user.username else user.username}"
+            )
+            login_apps.append(app)
         except Exception as exc:
             logger.error(f"{app.name} Login Error 登陆错误! {exc}")
             continue
 
-        logger.success(
-            f"Login {user.first_name} {'@None' if not user.username else user.username}"
-        )
-
-        # ===== Test Code =======
-        for config in configs:
-            asyncio.ensure_future(IntervalSend(app, config=config))
-
-        # ======== Test Code end ==========
+    while True:
+        for login_app in login_apps:
+            for config in configs:
+                # asyncio.ensure_future(IntervalSend(app, config=config)) # 同时发
+                await IntervalSend(login_app, config=config)
 
     await idle()
-    for app in apps:
+    for app in login_apps:
         await app.stop()
 
 
