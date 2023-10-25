@@ -1,13 +1,27 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+"""
+@File    :   getOKRedpacketBulk.py
+@Time    :   2023/10/17 23:47:00
+@Author  :   WhaleFall
+@License :   (C)Copyright 2020-2023, WhaleFall
+@Desc    :   批量登陆账号并抢夺 @okpay 的红包
+
+实现原理:
+@okpay 的红包
+是点击按钮后通过 /start?param=? 这种参数识别,现在添加了
+"""
+
+
 # ====== pyrogram =======
-import pyromod
-from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
-from pyrogram import Client, idle, filters
-from pyrogram.handlers import MessageHandler
+from pyrogram import Client, idle, filters  # type: ignore
+from pyrogram.handlers import MessageHandler  # type: ignore
 from pyrogram.types import Message, InlineKeyboardMarkup, User
 from pyrogram import errors
 from pyrogram.enums import ParseMode
 from pyrogram.raw import functions
 from urllib.parse import urlparse, parse_qs
+
 # ====== pyrogram end =====
 
 from contextlib import closing, suppress
@@ -32,12 +46,13 @@ REDPACK_GROUPS_ID = [
     -1001968888888,
     -1001979255590,
     -1001811589217,
-    -1001919310248
+    -1001919310248,
 ]
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 __desc__ = """
 抢夺 @okpay 机器人的红包
+2023/10/17 Update: 新增验证码的识别
 """
 # ====== Config End ======
 # ===== logger ====
@@ -48,7 +63,7 @@ logger.add(
     format="<green>{time:HH:mm:ss}</green> | {name}:{function} {level} | <level>{message}</level>",
     level="DEBUG" if DEBUG else "INFO",
     backtrace=True,
-    diagnose=True
+    diagnose=True,
 )
 # ===== logger end =====
 
@@ -57,6 +72,7 @@ logger.add(
 
 def capture_err(func):
     """handle error and notice user"""
+
     @wraps(func)
     async def capture(client: Client, message: Message, *args, **kwargs):
         try:
@@ -64,7 +80,10 @@ def capture_err(func):
         except Exception as err:
             await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
             raise err
+
     return capture
+
+
 # ====== error handle end =========
 
 # ====== Client maker =======
@@ -77,21 +96,8 @@ def makeClient(path: Path) -> Client:
         api_id=API_ID,
         api_hash=API_HASH,
         session_string=session_string,
-        in_memory=True
-    )
-
-
-async def makeSessionString(**kwargs) -> str:
-    client = Client(
-        name="test",
-        api_id=API_ID,
-        api_hash=API_HASH,
         in_memory=True,
-        **kwargs
     )
-
-    async with client as c:
-        print(await c.export_session_string())
 
 
 def loadClientsInFolder() -> List[Client]:
@@ -107,8 +113,11 @@ def loadClientsInFolder() -> List[Client]:
 
     return [
         Client(
-            name=name, session_string=session,
-            api_id=API_ID, api_hash=API_HASH, in_memory=True
+            name=name,
+            session_string=session,
+            api_id=API_ID,
+            api_hash=API_HASH,
+            in_memory=True,
         )
         for name, session in file_content_list
     ]
@@ -122,23 +131,22 @@ def loadClientsInFolder() -> List[Client]:
 
 def parse_url(url: str):
     parsed = urlparse(url)
-    return parsed.path[1:], parse_qs(parsed.query)['start']
+    return parsed.path[1:], parse_qs(parsed.query)["start"]
+
 
 # ====== helper function end ====
 
 # ===== Handle ======
 
 
-# @app.on_message(filters=filters.command("start") & filters.private)
-@capture_err
-async def start(client: Client, message: Message):
-    await message.reply_text(__desc__)
-
 # @bao5bot 5027290533
 
 
-# @app.on_message(filters=filters.chat(5027290533) & filters.inline_keyboard)
-async def handle_redpacket_bot(client: Client, message: Message):
+async def handle_all(client: Client, message: Message):
+    print(message)
+
+
+async def handle_inlineKeyboard_bot(client: Client, message: Message):
     logger.debug(f"识别到InlineKeyboard:{message.text}")
     for items in message.reply_markup.inline_keyboard:
         for item in items:
@@ -146,54 +154,38 @@ async def handle_redpacket_bot(client: Client, message: Message):
                 await client.request_callback_answer(
                     chat_id=message.chat.id,
                     message_id=message.id,
-                    callback_data=item.callback_data
+                    callback_data=item.callback_data,
                 )
             except errors.exceptions.bad_request_400.DataInvalid:
                 logger.info("可忽略错误!")
             except Exception as e:
-                logger.error(
-                    f"{client.me.first_name} 抢红包时出现错误!"
-
-                )
+                logger.error(f"{client.me.first_name} 抢红包时出现错误!")
 
 
-# @app.on_message(filters=filters.chat(REDPACK_GROUPS_ID) & filters.inline_keyboard)
-# @capture_err
 async def handle_redpacket_msg(client: Client, message: Message):
     logger.debug(f"识别到InlineKeyboard:{message.text}")
     if "红包" in message.text and client.me.first_name in message.text:
         for i in message.text.split("\n\n")[1].split("\n"):
             if client.me.first_name in i:
                 logger.success(
-                    "%s 抢到 %s " %
-                    client.me.first_name,
-                    i.split(' ')[1].split(
-                        '(')[0], message.text.split("💰")[0].split(" ")[-1]
+                    "%s 抢到 %s " % client.me.first_name,
+                    i.split(" ")[1].split("(")[0],
+                    message.text.split("💰")[0].split(" ")[-1],
                 )
 
 
-# @app.on_message(filters=filters.command("getID"))
-# @capture_err
-async def get_ID(client: Client, message: Message):
-    await message.reply(
-        f"当前会话的ID:<code>{message.chat.id}</code>"
-    )
-
-
 # ==== Handle end =====
+
 
 @logger.catch()
 async def main():
     apps = loadClientsInFolder()
 
     for app in apps:
-
         await app.start()
         user = await app.get_me()
 
         # ===== Test Code =======
-        # chat_id = await app.get_chat("@w2ww2w2w")
-        # print(chat_id)
 
         # ======== Test Code end ==========
 
@@ -208,36 +200,31 @@ async def main():
 
         # @okpay 5703356189
 
-        app.add_handler(
-            MessageHandler(
-                handle_redpacket_bot,
-                filters=filters.inline_keyboard
-            )
-        )
+        app.add_handler(MessageHandler(handle_all, filters=filters.me))
 
-        app.add_handler(
-            MessageHandler(
-                handle_redpacket_msg,
-                filters=filters.inline_keyboard
-            )
-        )
+        # app.add_handler(
+        #     MessageHandler(
+        #         handle_inlineKeyboard_bot, filters=filters.inline_keyboard
+        #     )
+        # )
+
+        # app.add_handler(
+        #     MessageHandler(
+        #         handle_redpacket_msg, filters=filters.inline_keyboard
+        #     )
+        # )
 
         # ======= Add Handle end =====
 
         logger.success(
-            f"""
-    -------login success--------
-    username: {user.first_name}
-    type: {"Bot" if user.is_bot else "User"}
-    @{user.username}
-    ----------------------------
-    """
+            f"Login {user.first_name} {'@None' if not user.username else user.username}"
         )
 
     await idle()
 
     for app in apps:
         await app.stop()
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
