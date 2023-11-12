@@ -122,16 +122,10 @@ def loadClientsInFolder() -> List[Client]:
     ]
 
 
-def filter(user: Union[Chat, ChatPreview]) -> bool:
-    if (
-        user.photo
-        and user.username
-        and user.last_name
-        and user.first_name
-        and user.bio
-        and user.type == ChatType.PRIVATE
-    ):
-        return True
+def filter(user: Union[Chat, ChatPreview, User]) -> bool:
+    if isinstance(user, User):
+        if user.photo and user.username and user.last_name and user.first_name:
+            return True
     return False
 
 
@@ -167,14 +161,15 @@ async def getGroupUser(
                 logger.debug("是机器人 skip")
                 continue
 
-            try:
-                logger.info(f"get_chat:{user_id}")
-                rawUser = await client.get_chat(user_id)
-                await asyncio.sleep(0.5)
-            except Exception as exc:
-                skip_user.append(user_id)
-                logger.error(f"获取用户资料出现错误:{exc}")
-                continue
+            # try:
+            #     skip_user.append(user_id)
+            #     logger.info(f"get_chat:{user_id}")
+            #     rawUser = await client.get_chat(user_id)
+            #     await asyncio.sleep(0.5)
+            # except Exception as exc:
+            #     logger.error(f"获取用户资料出现错误:{exc}")
+            #     continue
+            rawUser = i.from_user
 
             if not filter(rawUser):
                 skip_user.append(user_id)
@@ -186,7 +181,7 @@ async def getGroupUser(
                 first=rawUser.first_name,
                 last=rawUser.last_name,
                 username=rawUser.username,
-                bio=rawUser.bio,
+                bio="0",
                 photo=await client.download_media(
                     rawUser.photo.small_file_id, in_memory=True
                 ),
