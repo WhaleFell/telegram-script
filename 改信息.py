@@ -143,10 +143,11 @@ async def getGroupUser(
     but get history message is not need.
     """
     userObjs: List[BaseUser] = []
+    skip_user: List[int] = []
     exists_user: List[int] = []
 
-    await client.get_chat(COPY_GROUP_ID)
     try:
+        await client.get_chat(COPY_GROUP_ID)
         await client.join_chat(COPY_GROUP_ID)
     except Exception as exc:
         logger.error("信息号未加入克隆群！", exc)
@@ -158,24 +159,26 @@ async def getGroupUser(
         logger.info("获取中.....")
         if isinstance(i, Message):
             user_id: int = i.from_user.id
-            if i.from_user.is_bot:
-                logger.debug("是机器人跳过")
+            if (user_id in exists_user) or (user_id in skip_user):
+                logger.debug(f"{user_id} 用户重复 skip")
                 continue
 
-            if user_id in exists_user:
-                logger.debug("用户重复")
+            if i.from_user.is_bot:
+                skip_user.append(user_id)
+                logger.debug("是机器人 skip")
                 continue
+
             try:
                 rawUser = await client.get_chat(user_id)
-
-            except errors.exceptions.flood_420.FloodWait as wait_err:
-                logger.error(f"太快了进入等待:{wait_err.value}s")
-                if isinstance(wait_err.value, Union[float, int]):
-                    await asyncio.sleep(wait_err.value)
+                await asyncio.sleep(1)
+            except Exception as exc:
+                skip_user.append(user_id)
+                logger.error(f"获取用户资料出现错误:{exc}")
                 continue
 
             if not filter(rawUser):
-                logger.info("过滤掉没用的账户！")
+                skip_user.append(user_id)
+                logger.info(f"过滤掉没用的用户{user_id}！")
                 continue
 
             exists_user.append(rawUser.id)
