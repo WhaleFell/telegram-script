@@ -76,8 +76,8 @@ logger.add(
 
 
 class BaseUser(BaseModel):
-    first: Optional[str]
-    last: Optional[str]
+    first: Optional[str] = ""
+    last: Optional[str] = ""
     username: Optional[str]
     bio: Optional[str]
     photo: Any
@@ -123,8 +123,9 @@ def loadClientsInFolder() -> List[Client]:
 
 
 def filter(user: Union[Chat, ChatPreview, User]) -> bool:
+    """用户过滤"""
     if isinstance(user, User):
-        if user.photo and user.username and user.last_name:
+        if user.photo:
             return True
     return False
 
@@ -208,18 +209,23 @@ async def ATryInvoke(func: Callable):
 
 
 async def setProfile(client: Client, user: BaseUser):
+    # 名字
     await ATryInvoke(
         lambda: client.update_profile(
             first_name=user.first, last_name=user.last, bio=user.bio
         )
     )
 
-    await ATryInvoke(
-        lambda: client.set_username(
-            username=user.username + "".join(random.choices("1234567890", k=3))
+    # 用户名
+    if user.username:
+        await ATryInvoke(
+            lambda: client.set_username(
+                username=user.username
+                + "".join(random.choices("1234567890", k=3))
+            )
         )
-    )
 
+    # 头像
     await ATryInvoke(lambda: client.set_profile_photo(photo=user.photo))
 
     await ATryInvoke(
