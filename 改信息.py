@@ -76,10 +76,10 @@ logger.add(
 
 
 class BaseUser(BaseModel):
-    first: str
-    last: str
-    username: str
-    bio: str
+    first: Optional[str]
+    last: Optional[str]
+    username: Optional[str]
+    bio: Optional[str]
     photo: Any
 
     def __repr__(self) -> str:
