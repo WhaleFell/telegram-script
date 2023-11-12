@@ -155,19 +155,17 @@ async def getGroupUser(
 
     logger.info(f"正在读取群的历史信息以便读取群用户")
 
+    logger.info("获取中.....")
     async for i in client.get_chat_history(COPY_GROUP_ID):
-        logger.info("获取中.....")
         if isinstance(i, Message):
             user_id: int = i.from_user.id
             if (user_id in exists_user) or (user_id in skip_user):
-                logger.debug(f"{user_id} 用户重复 skip")
+                # logger.debug(f"{user_id} 用户重复 skip")
                 continue
-
             if i.from_user.is_bot:
                 skip_user.append(user_id)
                 logger.debug("是机器人 skip")
                 continue
-
             try:
                 rawUser = await client.get_chat(user_id)
                 await asyncio.sleep(1)
@@ -178,7 +176,7 @@ async def getGroupUser(
 
             if not filter(rawUser):
                 skip_user.append(user_id)
-                logger.info(f"过滤掉没用的用户{user_id}！")
+                logger.info(f"过滤掉没资料不全的用户{user_id}！")
                 continue
 
             exists_user.append(rawUser.id)
