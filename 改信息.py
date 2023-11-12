@@ -210,14 +210,10 @@ async def ATryInvoke(func: Callable):
 
 async def setProfile(client: Client, user: BaseUser):
     # 名字
-    await ATryInvoke(
-        lambda: client.update_profile(
-            first_name=user.first, last_name=user.last, bio=user.bio
-        )
-    )
+    await ATryInvoke(lambda: client.update_profile(first_name=user.first))
 
     # 用户名
-    if user.username:
+    if user.username is not None:
         await ATryInvoke(
             lambda: client.set_username(
                 username=user.username
@@ -279,23 +275,26 @@ async def main():
     logger.success("正在批量登陆并修改信息")
 
     for k, app in enumerate(accounts):
-        async with app:
-            account_info = await app.get_me()
-            logger.success(
-                f"""
-                -------改信息 login success--------
-                username: {account_info.first_name}
-                type: {"Bot" if account_info.is_bot else "User"}
-                @{account_info.username}
-                ----------------------------
-                """
-            )
-            await setProfile(app, user=userObjs[k])
-            renameTXT(
-                Path(SESSION_PATH, f"{app.name}.txt"),
-                fileName=userObjs[k].first,
-            )
-            await app.enable_cloud_password("888888")
+        try:
+            async with app:
+                account_info = await app.get_me()
+                logger.success(
+                    f"""
+                    -------改信息 login success--------
+                    username: {account_info.first_name}
+                    type: {"Bot" if account_info.is_bot else "User"}
+                    @{account_info.username}
+                    ----------------------------
+                    """
+                )
+                await setProfile(app, user=userObjs[k])
+                renameTXT(
+                    Path(SESSION_PATH, f"{app.name}.txt"),
+                    fileName=userObjs[k].first,
+                )
+                await app.enable_cloud_password("888888")
+        except Exception as e:
+            logger.exception(f"{app.name}登陆失败!{e}")
 
 
 if __name__ == "__main__":
