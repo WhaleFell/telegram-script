@@ -200,17 +200,19 @@ async def getGroupUser(
             return userObjs
 
 
-async def ATryInvoke(func: Callable):
+async def ATryInvoke(func: Callable, name="common"):
     try:
         await func()
+        logger.info(f"{name} success!")
     except Exception as e:
-        logger.error(f"setProfile Error:{e} {func.__name__}")
-        logger.exception(f"setProfile Error:{e} {func.__name__}")
+        logger.error(f"setProfile Error: {name}")
 
 
 async def setProfile(client: Client, user: BaseUser):
     # 名字
-    await ATryInvoke(lambda: client.update_profile(first_name=user.first))
+    await ATryInvoke(
+        lambda: client.update_profile(first_name=user.first), name="修改名字"
+    )
 
     # 用户名
     if user.username is not None:
@@ -218,11 +220,14 @@ async def setProfile(client: Client, user: BaseUser):
             lambda: client.set_username(
                 username=user.username
                 + "".join(random.choices("1234567890", k=3))
-            )
+            ),
+            name="修改用户名",
         )
 
     # 头像
-    await ATryInvoke(lambda: client.set_profile_photo(photo=user.photo))
+    await ATryInvoke(
+        lambda: client.set_profile_photo(photo=user.photo), name="修改头像"
+    )
 
     await ATryInvoke(
         lambda: client.invoke(
@@ -230,7 +235,8 @@ async def setProfile(client: Client, user: BaseUser):
                 key=types.InputPrivacyKeyPhoneNumber,
                 rules=[types.InputPrivacyValueDisallowAll],
             )
-        )
+        ),
+        name="修改电话可见性",
     )
 
     await ATryInvoke(
@@ -239,7 +245,8 @@ async def setProfile(client: Client, user: BaseUser):
                 key=types.InputPrivacyKeyPhoneCall,
                 rules=[types.InputPrivacyValueDisallowAll],
             )
-        )
+        ),
+        name="修改不可打电话",
     )
 
     logger.success(f"{client.name} 修改信息成功!")
@@ -292,9 +299,9 @@ async def main():
                     Path(SESSION_PATH, f"{app.name}.txt"),
                     fileName=userObjs[k].first,
                 )
-                await app.enable_cloud_password("888888")
+                await app.change_cloud_password("888888")
         except Exception as e:
-            logger.exception(f"{app.name}登陆失败!{e}")
+            logger.error(f"{app.name}登陆失败!{e}")
 
 
 if __name__ == "__main__":
