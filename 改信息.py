@@ -227,8 +227,8 @@ async def setProfile(client: Client, user: BaseUser):
     await ATryInvoke(
         lambda: client.invoke(
             functions.account.SetPrivacy(
-                types.InputPrivacyKeyPhoneNumber,
-                types.InputPrivacyValueDisallowAll,
+                key=types.InputPrivacyKeyPhoneNumber,
+                rules=[types.InputPrivacyValueDisallowAll],
             )
         )
     )
@@ -236,8 +236,8 @@ async def setProfile(client: Client, user: BaseUser):
     await ATryInvoke(
         lambda: client.invoke(
             functions.account.SetPrivacy(
-                types.InputPrivacyKeyPhoneCall,
-                types.InputPrivacyValueDisallowAll,
+                key=types.InputPrivacyKeyPhoneCall,
+                rules=[types.InputPrivacyValueDisallowAll],
             )
         )
     )
