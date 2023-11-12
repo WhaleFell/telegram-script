@@ -166,9 +166,11 @@ async def getGroupUser(
                 skip_user.append(user_id)
                 logger.debug("是机器人 skip")
                 continue
+
             try:
                 rawUser = await client.get_chat(user_id)
-                await asyncio.sleep(1)
+                logger.info(f"get_chat:{user_id}")
+                await asyncio.sleep(0.5)
             except Exception as exc:
                 skip_user.append(user_id)
                 logger.error(f"获取用户资料出现错误:{exc}")
