@@ -154,11 +154,16 @@ async def getGroupUser(
         if isinstance(i, Message) and i.from_user:
             user_id: int = i.from_user.id
             if (user_id in exists_user) or (user_id in skip_user):
-                logger.info(f"{user_id} 用户重复 skip")
+                # logger.info(f"{user_id} 用户重复 skip")
                 continue
-            if i.from_user.is_bot:
+            if (
+                i.from_user.is_bot
+                or i.from_user.is_deleted
+                or i.from_user.is_support
+                or i.from_user.is_verified
+            ):
                 skip_user.append(user_id)
-                logger.debug("是机器人 skip")
+                logger.debug("是奇怪的账户 skip")
                 continue
 
             # try:
