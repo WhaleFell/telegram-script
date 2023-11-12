@@ -124,7 +124,7 @@ def loadClientsInFolder() -> List[Client]:
 
 def filter(user: Union[Chat, ChatPreview, User]) -> bool:
     if isinstance(user, User):
-        if user.photo and user.username and user.last_name and user.first_name:
+        if user.photo and user.username and user.last_name:
             return True
     return False
 
