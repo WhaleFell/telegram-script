@@ -2,15 +2,22 @@
 
 # ====== pyrogram =======
 import random
-from pyrogram import Client
 import pyromod
 from pyromod.helpers import ikb, array_chunk  # inlinekeyboard
-from pyrogram import Client, idle, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, BotCommand, CallbackQuery, User, ChatPreview, Chat
-from pyrogram.handlers import MessageHandler
+from pyrogram import Client, idle, filters  # type:ignore
+from pyrogram.types import (
+    Message,
+    InlineKeyboardMarkup,
+    BotCommand,
+    CallbackQuery,
+    User,
+    ChatPreview,
+    Chat,
+)
 from pyrogram.enums import ParseMode, ChatType
 from pyrogram import raw
 from pyrogram import errors
+
 # ====== pyrogram end =====
 
 from contextlib import closing, suppress
@@ -59,7 +66,7 @@ logger.add(
     format="<green>{time:HH:mm:ss}</green> | {name}:{function} {level} | <level>{message}</level>",
     level="DEBUG" if DEBUG else "INFO",
     backtrace=True,
-    diagnose=True
+    diagnose=True,
 )
 
 # ===== logger end =====
@@ -68,14 +75,11 @@ logger.add(
 
 
 class BaseUser(BaseModel):
-    first: Union[str, None] = None
-    last: Union[str, None] = None
-    username: Union[str, None] = None
-    bio: Union[str, None] = None
-    photo: Union[Any, None] = None
-
-    # ignore
-    # arbitrary_types_allowed = True
+    first: str
+    last: str
+    username: str
+    bio: str
+    photo: Any
 
     def __repr__(self) -> str:
         return f"<BaseUser username={self.username}>"
@@ -88,7 +92,7 @@ def makeClient(path: Path) -> Client:
         api_id=API_ID,
         api_hash=API_HASH,
         session_string=session_string,
-        in_memory=True
+        in_memory=True,
     )
 
 
@@ -107,25 +111,35 @@ def loadClientsInFolder() -> List[Client]:
 
     return [
         Client(
-            name=name, session_string=session,
-            api_id=API_ID, api_hash=API_HASH, in_memory=True
+            name=name,
+            session_string=session,
+            api_id=API_ID,
+            api_hash=API_HASH,
+            in_memory=True,
         )
         for name, session in file_content_list
     ]
 
 
 def filter(user: Chat) -> bool:
-    if (user.photo and user.username and user.bio and user.type == ChatType.PRIVATE):
+    if (
+        user.photo
+        and user.username
+        and user.bio
+        and user.type == ChatType.PRIVATE
+    ):
         return True
     return False
 
 
-async def getGroupUser(client: Client, limit: int = 20) -> List[BaseUser]:
+async def getGroupUser(
+    client: Client, limit: int = 20
+) -> Optional[List[BaseUser]]:
     """get group users
     directly get users list must be group Administrator
     but get history message is not need.
     """
-    userObjs: List[User] = []
+    userObjs: List[BaseUser] = []
     exists_user: List[int] = []
 
     await client.get_chat(COPY_GROUP_ID)
@@ -156,15 +170,17 @@ async def getGroupUser(client: Client, limit: int = 20) -> List[BaseUser]:
                 continue
 
             if not filter(rawUser):
-                logger.debug("过滤掉！")
+                logger.info("过滤掉没用的账户！")
                 continue
             exists_user.append(rawUser.id)
-            user: User = BaseUser(
+            user: BaseUser = BaseUser(
                 first=rawUser.first_name,
                 last=rawUser.last_name,
                 username=rawUser.username,
                 bio=rawUser.bio,
-                photo=await client.download_media(rawUser.photo.small_file_id, in_memory=True)
+                photo=await client.download_media(
+                    rawUser.photo.small_file_id, in_memory=True
+                ),
             )
             userObjs.append(user)
             logger.success(f"获取到用户:{user}")
@@ -183,37 +199,26 @@ async def ATryInvoke(func: Callable):
 
 
 async def setProfile(client: Client, user: BaseUser):
-
     await ATryInvoke(
         lambda: client.update_profile(
-            first_name=user.first,
-            last_name=user.last,
-            bio=user.bio
+            first_name=user.first, last_name=user.last, bio=user.bio
         )
     )
 
     await ATryInvoke(
         lambda: client.set_username(
-            username=user.username+''.join(random.choices("1234567890", k=3))
+            username=user.username + "".join(random.choices("1234567890", k=3))
         )
     )
 
-    await ATryInvoke(
-        lambda: client.set_profile_photo(photo=user.photo)
-    )
+    await ATryInvoke(lambda: client.set_profile_photo(photo=user.photo))
 
     await ATryInvoke(
         lambda: client.invoke(
             raw.functions.account.SetPrivacy(
                 raw.types.InputPrivacyKeyPhoneNumber,
-                raw.types.InputPrivacyValueDisallowAll
+                raw.types.InputPrivacyValueDisallowAll,
             )
-        )
-    )
-
-    await ATryInvoke(
-        lambda: client.invoke(
-            await app.enable_cloud_password("88")
         )
     )
 
@@ -221,9 +226,8 @@ async def setProfile(client: Client, user: BaseUser):
 
 
 def renameTXT(path: Path, fileName: str):
-    path.rename(
-        Path(path.parent, f"{fileName}.txt")
-    )
+    path.rename(Path(path.parent, f"{fileName}.txt"))
+
 
 # ====== Helper Function End ====
 
@@ -244,7 +248,9 @@ async def main():
     ----------------------------
     """
         )
-        userObjs: List[BaseUser] = await getGroupUser(infoBot, limit=len(accounts))
+        userObjs: List[BaseUser] = await getGroupUser(
+            infoBot, limit=len(accounts)
+        )
 
     logger.success("正在批量登陆并修改信息")
 
@@ -262,8 +268,10 @@ async def main():
             )
             await setProfile(app, user=userObjs[k])
             renameTXT(
-                Path(SESSION_PATH, f"{app.name}.txt"), fileName=userObjs[k].first
+                Path(SESSION_PATH, f"{app.name}.txt"),
+                fileName=userObjs[k].first,
             )
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
