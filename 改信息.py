@@ -15,8 +15,9 @@ from pyrogram.types import (
     Chat,
 )
 from pyrogram.enums import ParseMode, ChatType
-from pyrogram import raw
 from pyrogram import errors
+
+from pyrogram.raw import functions, types
 
 # ====== pyrogram end =====
 
@@ -121,10 +122,12 @@ def loadClientsInFolder() -> List[Client]:
     ]
 
 
-def filter(user: Chat) -> bool:
+def filter(user: Union[Chat, ChatPreview]) -> bool:
     if (
         user.photo
         and user.username
+        and user.last_name
+        and user.first_name
         and user.bio
         and user.type == ChatType.PRIVATE
     ):
@@ -152,6 +155,7 @@ async def getGroupUser(
     logger.info(f"正在读取群的历史信息以便读取群用户")
 
     async for i in client.get_chat_history(COPY_GROUP_ID):
+        logger.info("获取中.....")
         if isinstance(i, Message):
             user_id: int = i.from_user.id
             if i.from_user.is_bot:
@@ -162,16 +166,18 @@ async def getGroupUser(
                 logger.debug("用户重复")
                 continue
             try:
-                rawUser: Chat = await client.get_chat(user_id)
+                rawUser = await client.get_chat(user_id)
 
             except errors.exceptions.flood_420.FloodWait as wait_err:
                 logger.error(f"太快了进入等待:{wait_err.value}s")
-                await asyncio.sleep(wait_err.value)
+                if isinstance(wait_err.value, Union[float, int]):
+                    await asyncio.sleep(wait_err.value)
                 continue
 
             if not filter(rawUser):
                 logger.info("过滤掉没用的账户！")
                 continue
+
             exists_user.append(rawUser.id)
             user: BaseUser = BaseUser(
                 first=rawUser.first_name,
@@ -215,9 +221,18 @@ async def setProfile(client: Client, user: BaseUser):
 
     await ATryInvoke(
         lambda: client.invoke(
-            raw.functions.account.SetPrivacy(
-                raw.types.InputPrivacyKeyPhoneNumber,
-                raw.types.InputPrivacyValueDisallowAll,
+            functions.account.SetPrivacy(
+                types.InputPrivacyKeyPhoneNumber,
+                types.InputPrivacyValueDisallowAll,
+            )
+        )
+    )
+
+    await ATryInvoke(
+        lambda: client.invoke(
+            functions.account.SetPrivacy(
+                types.InputPrivacyKeyPhoneCall,
+                types.InputPrivacyValueDisallowAll,
             )
         )
     )
@@ -248,9 +263,9 @@ async def main():
     ----------------------------
     """
         )
-        userObjs: List[BaseUser] = await getGroupUser(
-            infoBot, limit=len(accounts)
-        )
+        userObjs = await getGroupUser(infoBot, limit=len(accounts))
+        if not userObjs:
+            return
 
     logger.success("正在批量登陆并修改信息")
 
@@ -271,6 +286,7 @@ async def main():
                 Path(SESSION_PATH, f"{app.name}.txt"),
                 fileName=userObjs[k].first,
             )
+            await app.enable_cloud_password("888888")
 
 
 if __name__ == "__main__":
