@@ -299,7 +299,7 @@ async def main():
                     Path(SESSION_PATH, f"{app.name}.txt"),
                     fileName=userObjs[k].first,
                 )
-                await app.change_cloud_password("888888")
+                # await app.change_cloud_password("888888")
         except Exception as e:
             logger.error(f"{app.name}登陆失败!{e}")
 
