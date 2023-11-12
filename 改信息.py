@@ -168,8 +168,8 @@ async def getGroupUser(
                 continue
 
             try:
-                rawUser = await client.get_chat(user_id)
                 logger.info(f"get_chat:{user_id}")
+                rawUser = await client.get_chat(user_id)
                 await asyncio.sleep(0.5)
             except Exception as exc:
                 skip_user.append(user_id)
