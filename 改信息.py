@@ -17,7 +17,7 @@ from pyrogram.types import (
 from pyrogram.enums import ParseMode, ChatType
 from pyrogram import errors
 
-from pyrogram.raw import functions, types
+from pyrogram import raw
 
 # ====== pyrogram end =====
 
@@ -206,6 +206,7 @@ async def ATryInvoke(func: Callable, name="common"):
         logger.info(f"{name} success!")
     except Exception as e:
         logger.error(f"setProfile Error: {name}")
+        logger.exception("--------Error:--------\n")
 
 
 async def setProfile(client: Client, user: BaseUser):
@@ -229,11 +230,13 @@ async def setProfile(client: Client, user: BaseUser):
         lambda: client.set_profile_photo(photo=user.photo), name="修改头像"
     )
 
+    raw.base.global_privacy_settings
+
     await ATryInvoke(
         lambda: client.invoke(
-            functions.account.SetPrivacy(
-                key=types.InputPrivacyKeyPhoneNumber,
-                rules=[types.InputPrivacyValueDisallowAll],
+            raw.functions.account.SetPrivacy(
+                key=raw.types.input_privacy_key_phone_number.InputPrivacyKeyPhoneNumber,
+                rules=[raw.types.InputPrivacyValueDisallowAll],
             )
         ),
         name="修改电话可见性",
@@ -241,9 +244,9 @@ async def setProfile(client: Client, user: BaseUser):
 
     await ATryInvoke(
         lambda: client.invoke(
-            functions.account.SetPrivacy(
-                key=types.InputPrivacyKeyPhoneCall,
-                rules=[types.InputPrivacyValueDisallowAll],
+            raw.functions.account.SetPrivacy(
+                key=raw.types.InputPrivacyKeyPhoneCall,
+                rules=[raw.types.InputPrivacyValueDisallowAll],
             )
         ),
         name="修改不可打电话",
