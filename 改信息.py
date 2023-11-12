@@ -41,8 +41,8 @@ ROOTPATH: Path = Path(__file__).parent.absolute()
 DEBUG = True
 # 信息号的名称
 INFO_BOT = os.environ.get("NAME") or "cheryywk"
-# 需要克隆的群,信息号加入的克隆群
-COPY_GROUP_ID = -1001797337928
+# 需要克隆的群,信息号加入的克隆群 -1001939161298
+COPY_GROUP_ID = -1001939161298
 
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
@@ -157,7 +157,7 @@ async def getGroupUser(
 
     logger.info("获取中.....")
     async for i in client.get_chat_history(COPY_GROUP_ID):
-        if isinstance(i, Message):
+        if isinstance(i, Message) and i.from_user:
             user_id: int = i.from_user.id
             if (user_id in exists_user) or (user_id in skip_user):
                 # logger.debug(f"{user_id} 用户重复 skip")
