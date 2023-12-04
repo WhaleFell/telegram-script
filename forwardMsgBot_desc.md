@@ -85,13 +85,14 @@ git+https://github.com/usernein/pyromod.git
 docker run -d --name=forwardAdminBot \
 -e DB_URL="mysql+aiomysql://root:lovehyy@mariadb/tgforward?charset=utf8mb4" \
 -e NAME=WFTest8964Bot \
+-e PUPPET_ID=6398941159 \
 --net=tgforward \
 -v /wfwork/telegram-script:/wkdir/ \
 -v /wfwork/telegram-script/sessions:/wkdir/sessions \
 tgbase python -u forwardBotAdmin.py
 
 # 傀儡号
-docker run -d --name=forwardPupetUser \
+docker run -d  --name=forwardPupetUser \
 -e DB_URL="mysql+aiomysql://root:lovehyy@mariadb/tgforward?charset=utf8mb4" \
 -e NAME=cheryywk \
 --net=tgforward \

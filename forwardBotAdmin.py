@@ -66,19 +66,23 @@ API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
 
-puppet_id: str = "6353451026"  # 傀儡号 ID
+puppet_id: str = os.environ.get("PUPPET_ID") or "6398941159"  # 傀儡号 ID
 admin_ids: List[int] = [6398941159]  # 管理员 ID
 __desc__ = """
 💫💫💫欢迎使用转载傀儡号管理系统!V2.0💫💫💫
+
+@WFTest8964Bot
 
 💖用于实时转载群聊的信息、转载群聊历史信息、支持信息过滤等。💖
 💖纯TG配置,傻瓜都会配!💖
 💖是您的营销好帮手。💖
 
-⚠使用前请拉入傀儡号: @Miemie628 到群聊/频道
+⚠使用前请拉入傀儡号: @cheryywk 到群聊/频道中
 
 ⚠如果您不知道群/频道 ID 请将傀儡号拉入群后输入 /getID
 ⚠或者在本机器人输入 /id 根据提示输入群组/频道的用户名尝试获取 ID!
+
+ID 查询机器人：https://t.me/nminfobot
 
 /start 开始
 /reg 注册专属账号
