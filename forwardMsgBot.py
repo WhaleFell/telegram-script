@@ -4,19 +4,33 @@ from sqlalchemy import select, insert, func, update, ForeignKey
 from sqlalchemy import BigInteger, String, Integer, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    AsyncAttrs,
+    async_sessionmaker,
+    AsyncSession,
+)
 from datetime import datetime, timedelta
+
 # ====== sqlalchemy end =====
 
 # ====== pyrogram =======
 # https://stackoverflow.com/questions/74163185/send-premium-emoji-with-pyrogram
 import pyromod
+
 # ListenerTypes.CALLBACK_QUERY
 from pyromod.listen.listen import ListenerTypes
 from pyromod.helpers import ikb, array_chunk
-from pyrogram import Client, idle, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineQueryResult, CallbackQuery, User
+from pyrogram import Client, idle, filters  # type: ignore
+from pyrogram.types import (
+    Message,
+    InlineKeyboardMarkup,
+    InlineQueryResult,
+    CallbackQuery,
+    User,
+)
 from pyrogram.enums import ParseMode
+
 # ====== pyrogram end =====
 
 from contextlib import closing, suppress
@@ -37,8 +51,10 @@ DEBUG = True
 NAME = os.environ.get("NAME") or "user628"
 # SQLTIE3 sqlite+aiosqlite:///database.db  # 数据库文件名为 database.db 不存在的新建一个
 # 异步 mysql+aiomysql://user:password@host:port/dbname
-DB_URL = os.environ.get(
-    "DB_URL") or "mysql+aiomysql://root:123456@localhost/tgforward?charset=utf8mb4"
+DB_URL = (
+    os.environ.get("DB_URL")
+    or "mysql+aiomysql://root:123456@localhost/tgforward?charset=utf8mb4"
+)
 API_ID = 21341224
 API_HASH = "2d910cf3998019516d6d4bbb53713f20"
 SESSION_PATH: Path = Path(ROOTPATH, "sessions", f"{NAME}.txt")
@@ -56,7 +72,7 @@ logger.add(
     format="<green>{time:HH:mm:ss}</green> | {name}:{function} {level} | <level>{message}</level>",
     level="DEBUG" if DEBUG else "INFO",
     backtrace=True,
-    diagnose=True
+    diagnose=True,
 )
 # ===== logger end =====
 
@@ -66,17 +82,24 @@ logger.add(
 
 def capture_err(func):
     """handle error and notice user"""
+
     @wraps(func)
-    async def capture(client: Client, message: Union[Message, CallbackQuery], *args, **kwargs):
+    async def capture(
+        client: Client, message: Union[Message, CallbackQuery], *args, **kwargs
+    ):
         try:
             return await func(client, message, *args, **kwargs)
         except Exception as err:
             if isinstance(message, CallbackQuery):
-                await message.message.reply(f"机器人按钮回调 Panic 了:\n<code>{err}</code>")
+                await message.message.reply(
+                    f"机器人按钮回调 Panic 了:\n<code>{err}</code>"
+                )
             else:
                 await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
             raise err
+
     return capture
+
 
 # ====== error handle end =========
 
@@ -110,28 +133,33 @@ def get_user_id():
 
 
 class User(Base):
-    __tablename__ = 'user'
-    __table_args__ = {'comment': '转载用户表'}
+    __tablename__ = "user"
+    __table_args__ = {"comment": "转载用户表"}
 
     id: Mapped[str] = mapped_column(
-        String(20), primary_key=True, comment="用户 ID")
+        String(20), primary_key=True, comment="用户 ID"
+    )
 
     configs: Mapped[List["TGForwardConfig"]] = relationship(
-        'TGForwardConfig', backref='user', lazy='subquery')
+        "TGForwardConfig", backref="user", lazy="subquery"
+    )
 
     reg_at: Mapped[datetime] = mapped_column(
-        nullable=False, server_default=func.now(), comment='注册时间'
+        nullable=False, server_default=func.now(), comment="注册时间"
     )
     auth_time: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now() + timedelta(days=7), nullable=True, comment='授权时间')
+        default=lambda: datetime.now() + timedelta(days=7),
+        nullable=True,
+        comment="授权时间",
+    )
 
     def __repr__(self):
-        return f'<User(user_id={self.id}, reg_at={self.reg_at}, auth_time={self.auth_time})>'
+        return f"<User(user_id={self.id}, reg_at={self.reg_at}, auth_time={self.auth_time})>"
 
 
 class TGForwardConfig(Base):
     __tablename__ = "forward_configs"
-    __table_args__ = {'comment': '转载配置表'}
+    __table_args__ = {"comment": "转载配置表"}
 
     task_id: Mapped[int] = mapped_column(primary_key=True, comment="任务主键")
     # varchar(20) = String(20) 变长字符串 puppet: 傀儡 /ˈpʌp.ɪt/
@@ -148,23 +176,31 @@ class TGForwardConfig(Base):
     source: Mapped[str] = mapped_column(String(20), comment="源群聊ID")
     dest: Mapped[str] = mapped_column(String(20), comment="目标群聊ID")
     forward_history_count: Mapped[int] = mapped_column(
-        comment="转发历史信息的数量", default=10)
+        comment="转发历史信息的数量", default=10
+    )
     forward_history_state: Mapped[bool] = mapped_column(
-        Boolean(), comment="转发历史信息的状态", nullable=True, default=False)
-    interval_second: Mapped[int] = mapped_column(
-        comment="间隔时间单位 s", default=20)
+        Boolean(), comment="转发历史信息的状态", nullable=True, default=False
+    )
+    interval_second: Mapped[int] = mapped_column(comment="间隔时间单位 s", default=20)
 
     remove_word: Mapped[Optional[str]] = mapped_column(
-        String(100), comment="删除的文字,用,分隔", nullable=True)
+        String(100), comment="删除的文字,用,分隔", nullable=True
+    )
     cut_word: Mapped[Optional[str]] = mapped_column(
-        String(100), comment="截断词,用 , 分隔", nullable=True)
+        String(100), comment="截断词,用 , 分隔", nullable=True
+    )
     skip_word: Mapped[Optional[str]] = mapped_column(
-        String(100), comment="跳过词,用 , 分隔", nullable=True)
+        String(100), comment="跳过词,用 , 分隔", nullable=True
+    )
     add_text: Mapped[Optional[str]] = mapped_column(
-        String(100), comment="跳过语,用 , 分隔", nullable=True)
+        String(100), comment="跳过语,用 , 分隔", nullable=True
+    )
     # 使用 server_default 而不是 default ，因此值将由数据库本身处理。
     create_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), default=None, nullable=False, comment="任务添加的时间"
+        server_default=func.now(),
+        default=None,
+        nullable=False,
+        comment="任务添加的时间",
     )
 
 
@@ -183,8 +219,7 @@ class TGForwardConfigManager:
                 update(TGForwardConfig)
                 .where(TGForwardConfig.task_id == config.task_id)
                 .where(TGForwardConfig.puppet_id == get_user_id())
-                .values(
-                    forward_history_state=not config.forward_history_state)
+                .values(forward_history_state=not config.forward_history_state)
             )
             await session.commit()
             await self.flash_configs_cache()
@@ -192,26 +227,25 @@ class TGForwardConfigManager:
     async def flash_configs_cache(self) -> List[TGForwardConfig]:
         async with self.session() as session:
             configs = await session.execute(
-                select(TGForwardConfig)
-                .where(
+                select(TGForwardConfig).where(
                     TGForwardConfig.puppet_id == get_user_id()
                 )
             )
             await session.commit()
-            self.all_config_cache = configs.scalars().all()
+            self.all_config_cache = configs.scalars().all()  # type: ignore
 
-            return self.all_config_cache
+            return self.all_config_cache  # type: ignore
 
-    async def selectConfigByTaskid(self, task_id: int) -> Union[TGForwardConfig, None]:
+    async def selectConfigByTaskid(
+        self, task_id: int
+    ) -> Union[TGForwardConfig, None]:
         """根据任务 ID 选择任务"""
         task_id = int(task_id)
         async with self.session() as session:
             result = await session.scalar(
                 select(TGForwardConfig)
                 .where(TGForwardConfig.task_id == task_id)
-                .where(
-                    TGForwardConfig.puppet_id == get_user_id()
-                )
+                .where(TGForwardConfig.puppet_id == get_user_id())
             )
 
             return result
@@ -228,32 +262,33 @@ def makeClient(path: Path) -> Client:
         api_id=API_ID,
         api_hash=API_HASH,
         session_string=session_string,
-        in_memory=True
+        in_memory=True,
     )
 
 
 async def makeSessionString(**kwargs) -> str:
     client = Client(
-        name="test",
-        api_id=API_ID,
-        api_hash=API_HASH,
-        in_memory=True,
-        **kwargs
+        name="test", api_id=API_ID, api_hash=API_HASH, in_memory=True, **kwargs
     )
 
     async with client as c:
         print(await c.export_session_string())
+        return await c.export_session_string()
 
 
 app = makeClient(SESSION_PATH)
 
 
-@app.on_message(filters=filters.command("start") & filters.private & ~filters.me)
+@app.on_message(
+    filters=filters.command("start") & filters.private & ~filters.me
+)
 async def start(client: Client, message: Message):
     await message.reply_text(__desc__)
 
 
-async def askQuestion(queston: str, message: Message, timeout: int = 200) -> Union[Message, bool]:
+async def askQuestion(
+    queston: str, message: Message, timeout: int = 200
+) -> Union[Message, bool]:
     try:
         ans: Message = await message.chat.ask(queston, timeout=timeout)
         return ans
@@ -267,12 +302,16 @@ async def askQuestion(queston: str, message: Message, timeout: int = 200) -> Uni
 @app.on_message(filters=filters.command("getID") & ~filters.me)
 @capture_err
 async def get_ID(client: Client, message: Message):
-    await message.reply(
-        f"当前会话的ID:<code>{message.chat.id}</code>"
-    )
+    await message.reply(f"当前会话的ID:<code>{message.chat.id}</code>")
 
 
-def process_string(input_string, delete_words=None, check_words=None, append_text=None, truncate_words=None):
+def process_string(
+    input_string,
+    delete_words=None,
+    check_words=None,
+    append_text=None,
+    truncate_words=None,
+):
     """
     处理字符串的函数
     用 Python 写一个处理字符串的函数：
@@ -290,24 +329,24 @@ def process_string(input_string, delete_words=None, check_words=None, append_tex
     """
     # 删除需要删除的词语
     if delete_words:
-        delete_words_list = delete_words.split(',')
+        delete_words_list = delete_words.split(",")
         for word in delete_words_list:
-            input_string = input_string.replace(word.strip(), '')
+            input_string = input_string.replace(word.strip(), "")
 
     # 检查是否包含需要检查的词语
     if check_words:
-        check_words_list = check_words.split(',')
+        check_words_list = check_words.split(",")
         for word in check_words_list:
             if word.strip() in input_string:
                 return None
 
     # 在字符串结尾添加文本
     if append_text:
-        input_string += '\n' + append_text
+        input_string += "\n" + append_text
 
     # 截断字符串
     if truncate_words:
-        truncate_words_list = truncate_words.split(',')
+        truncate_words_list = truncate_words.split(",")
         for word in truncate_words_list:
             index = input_string.find(word.strip())
             if index != -1:
@@ -325,7 +364,8 @@ async def handle_ch_gp(client: Client, message: Message):
     for config in manager.all_config_cache:
         if str(message.chat.id) == config.source:
             logger.info(
-                f"[{config.comment}] source({message.chat.id})==>dest({config.dest}) {message.text}")
+                f"[{config.comment}] source({message.chat.id})==>dest({config.dest}) {message.text}"
+            )
             if not message.text:
                 # return await message.copy(chat_id=int(config.dest))
                 return await client.copy_message(
@@ -336,12 +376,17 @@ async def handle_ch_gp(client: Client, message: Message):
                 )
 
             text = process_string(
-                message.text, delete_words=config.remove_word,
-                check_words=config.skip_word, append_text=config.add_text, truncate_words=config.cut_word
+                message.text,
+                delete_words=config.remove_word,
+                check_words=config.skip_word,
+                append_text=config.add_text,
+                truncate_words=config.cut_word,
             )
 
             if text:
-                return await client.send_message(chat_id=int(config.dest), text=text)
+                return await client.send_message(
+                    chat_id=int(config.dest), text=text
+                )
 
         # 双向转发时开启
         # elif str(message.chat.id) == config.dest:
@@ -362,7 +407,7 @@ async def forwardHistoryMsg(client: Client, message: Message):
     logger.info("激活！")
     task_id = message.command[1]
 
-    config: TGForwardConfig = await manager.selectConfigByTaskid(task_id=task_id)
+    config = await manager.selectConfigByTaskid(task_id=int(task_id))
     if not config:
         return await message.reply(f"没有找到您设置的信息.{task_id}")
 
@@ -394,12 +439,16 @@ async def forwardHistoryMsg(client: Client, message: Message):
     # else:
     #     config = configs
 
-    await message.reply(f"您的源群组:<code>{config.dest}</code> 目标群组:<code>{config.source}</code> \n 读取历史信息:{config.forward_history_count} 发送间隔:{config.interval_second}s\n转发状态{config.forward_history_state} **现在开始转发**")
+    await message.reply(
+        f"您的源群组:<code>{config.dest}</code> 目标群组:<code>{config.source}</code> \n 读取历史信息:{config.forward_history_count} 发送间隔:{config.interval_second}s\n转发状态{config.forward_history_state} **现在开始转发**"
+    )
 
     msgs: List[Message] = []
     start_time = time.time()
 
-    async for msg in client.get_chat_history(chat_id=int(config.source), limit=config.forward_history_count):
+    async for msg in client.get_chat_history(
+        chat_id=int(config.source), limit=config.forward_history_count
+    ):  # type: ignore
         msgs.append(msg)
 
     await message.reply(f"读取了{len(msgs)}条信息，正在按顺序进行转发!")
@@ -410,11 +459,9 @@ async def forwardHistoryMsg(client: Client, message: Message):
             chat_id=int(config.dest),
             from_chat_id=ms.chat.id,
             message_id=ms.id,
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
         )
-        logger.success(
-            f"Bulk Forward:{config.source} ==> {config.dest}"
-        )
+        logger.success(f"Bulk Forward:{config.source} ==> {config.dest}")
         await asyncio.sleep(delay=config.interval_second)
 
     end_time = time.time()
@@ -435,9 +482,11 @@ def try_int(string: str) -> Union[str, int]:
         return string
 
 
-@app.on_message(filters=filters.command("flash_task") & filters.private & ~filters.me)
+@app.on_message(
+    filters=filters.command("flash_task") & filters.private & ~filters.me
+)
 @capture_err
-async def handle_id_command(client: Client, message: Message):
+async def handle_flash_task_command(client: Client, message: Message):
     config = await manager.flash_configs_cache()
 
     await message.reply(
@@ -448,11 +497,13 @@ async def handle_id_command(client: Client, message: Message):
 @app.on_message(filters=filters.command("id") & filters.private & ~filters.me)
 @capture_err
 async def handle_id_command(client: Client, message: Message):
-    ans: Message = await askQuestion("请输入用户名、邀请链接等，机器人会尝试获取id", client, message)
+    ans: Message = await askQuestion("请输入用户名、邀请链接等，机器人会尝试获取id", client, message)  # type: ignore
 
     id = await client.get_chat(chat_id=try_int(ans.text))
 
-    await ans.reply(f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>")
+    await ans.reply(
+        f"恭喜你。获取到 id 了：\n 类型：<code>{id.type}</code>\n ID:<code>{id.id}</code>"
+    )
 
 
 async def flashConfigsCache():
@@ -498,6 +549,7 @@ type: {"Bot" if user.is_bot else "User"}
     await app.stop()
     # 数据库
     await engine.dispose()
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()

@@ -8,6 +8,7 @@ from pyrogram.types import Message, InlineKeyboardMarkup
 from pyrogram.enums import ParseMode
 from pyrogram.raw import functions
 import pyrogram
+
 # ====== pyrogram end =====
 
 from contextlib import closing, suppress
@@ -20,6 +21,7 @@ import re
 from functools import wraps
 import glob
 import os
+
 # https://github.com/jd/tenacity
 from tenacity import retry, stop_after_attempt, wait_fixed
 
@@ -35,7 +37,13 @@ GROUP_ID = [-1001963862221]
 __desc__ = """
 批量自动群发消息,等待解除禁言后就发送
 将 session 放在 sessions folder 就自动登陆
+1. 用法一: 在目录下建立 content.txt 文件格式: session文件名,需要发送的内容
+2. 用法二：不要在目录下建立 content.txt , 登陆 sessions 里面的所有账号发送
+以下自定义的文字
 """
+# 所有账号解除禁言时必发的一段文字
+ALL_ACCOUNT_COMMENT = "所有账号解除禁言时必发的一段文字"
+
 # ====== Config End ======
 
 # ===== logger ====
@@ -46,7 +54,7 @@ logger.add(
     format="<green>{time:HH:mm:ss}</green> | {name}:{function} {level} | <level>{message}</level>",
     level="DEBUG" if DEBUG else "INFO",
     backtrace=True,
-    diagnose=True
+    diagnose=True,
 )
 # ===== logger end =====
 
@@ -57,6 +65,7 @@ banned_user: List[Tuple[Client, str]] = []
 
 def capture_err(func):
     """handle error and notice user"""
+
     @wraps(func)
     async def capture(client: Client, message: Message, *args, **kwargs):
         try:
@@ -64,7 +73,10 @@ def capture_err(func):
         except Exception as err:
             await message.reply(f"机器人 Panic 了:\n<code>{err}</code>")
             raise err
+
     return capture
+
+
 # ====== error handle end =========
 
 # ====== Client maker =======
@@ -77,21 +89,8 @@ def makeClient(path: Path) -> Client:
         api_id=API_ID,
         api_hash=API_HASH,
         session_string=session_string,
-        in_memory=True
-    )
-
-
-async def makeSessionString(**kwargs) -> str:
-    client = Client(
-        name="test",
-        api_id=API_ID,
-        api_hash=API_HASH,
         in_memory=True,
-        **kwargs
     )
-
-    async with client as c:
-        print(await c.export_session_string())
 
 
 def loadClientsInFolder() -> List[Client]:
@@ -107,8 +106,11 @@ def loadClientsInFolder() -> List[Client]:
 
     return [
         Client(
-            name=name, session_string=session,
-            api_id=API_ID, api_hash=API_HASH, in_memory=True
+            name=name,
+            session_string=session,
+            api_id=API_ID,
+            api_hash=API_HASH,
+            in_memory=True,
         )
         for name, session in file_content_list
     ]
@@ -124,13 +126,14 @@ def loadTXTFile(path: Path) -> List[Tuple[Path, str]]:
             line = line.strip()
             if not line:
                 continue
-            parts = line.split(',')
+            parts = line.split(",")
             if len(parts) < 2:
                 continue
             account = parts[0]
-            content = ','.join(parts[1:])
+            content = ",".join(parts[1:])
             result.append((Path(SESSIONS_PATH, f"{account}.txt"), content))
     return result
+
 
 # ====== Client maker end =======
 
@@ -148,11 +151,11 @@ async def start(client: Client, message: Message):
 
 
 @retry(stop=(stop_after_attempt(5),), wait=wait_fixed(2))
-async def trySendMsg(client: Client, content: str,) -> bool:
-    await client.send_message(
-        chat_id=GROUP_ID[0],
-        text=content
-    )
+async def trySendMsg(
+    client: Client,
+    content: str,
+) -> bool:
+    await client.send_message(chat_id=GROUP_ID[0], text=content)
 
 
 async def tryMore(app: Client, content: str) -> bool:
@@ -169,26 +172,30 @@ async def rawUpdateHandle(
     client: Client,
     update: pyrogram.raw.base.Update,
     users: pyrogram.types.User,
-    chats: pyrogram.types.Chat
+    chats: pyrogram.types.Chat,
 ):
     """原始更新监听"""
     global apps
     if "UpdateChatDefaultBannedRights" in str(type(update)):
         if not update.default_banned_rights.send_messages:
             if hasattr(update.peer, "chat_id"):
-                if -1*update.peer.chat_id in GROUP_ID:
+                if -1 * update.peer.chat_id in GROUP_ID:
                     await tryMore(client, apps[client])
             if hasattr(update.peer, "channel_id"):
                 cid = int("-100" + str(update.peer.channel_id))
                 if cid in GROUP_ID:
                     await tryMore(client, apps[client])
 
+
 # ==== Handle end =====
-cs = loadTXTFile(Path(ROOTPATH, "content.txt"))
-apps = {
-    makeClient(name): content
-    for name, content in cs
-}
+if Path(ROOTPATH, "content.txt").is_file():
+    logger.success("检测到 content.txt 文件,按照用法一启动")
+    cs = loadTXTFile(Path(ROOTPATH, "content.txt"))
+    apps = {makeClient(name): content for name, content in cs}
+else:
+    logger.success("没有 content.txt 文件, 按照用法二启动")
+    clients = loadClientsInFolder()
+    apps = {client: ALL_ACCOUNT_COMMENT for client in clients}
 
 
 @logger.catch()
@@ -196,7 +203,6 @@ async def main():
     global apps
     print(apps)
     for app, content in apps.items():
-
         await app.start()
         user = await app.get_me()
         await app.invoke(functions.account.UpdateStatus(offline=False))
@@ -215,11 +221,7 @@ async def main():
         res = await tryMore(app, content)
         if not res:
             logger.info(f"{app.name} 发送失败,添加解禁监听！")
-            app.add_handler(
-                RawUpdateHandler(
-                    rawUpdateHandle
-                )
-            )
+            app.add_handler(RawUpdateHandler(rawUpdateHandle))
 
         # ======== Test Code end ==========
 
@@ -231,6 +233,7 @@ async def main():
 
     for app, content in apps.items():
         await app.stop()
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()

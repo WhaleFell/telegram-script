@@ -71,7 +71,7 @@ admin_ids: List[int] = [6398941159]  # 管理员 ID
 __desc__ = """
 💫💫💫欢迎使用转载傀儡号管理系统!V2.0💫💫💫
 
-💖用于实时转载群聊的信息、转载群聊历史信息,可用于TG群聊克隆、假公群。💖
+💖用于实时转载群聊的信息、转载群聊历史信息、支持信息过滤等。💖
 💖纯TG配置,傻瓜都会配!💖
 💖是您的营销好帮手。💖
 
@@ -214,15 +214,16 @@ def get_user_id():
     return str(user.id)
 
 
-def authAdmin(message: Union[Message, CallbackQuery, str, int]) -> bool:
+def authAdmin(message: Union[Message, CallbackQuery]) -> bool:
     """权鉴 authorization"""
     if isinstance(message, (int, str)):
         id = int(message)
         if id in admin_ids:
             return True
 
-    if message.from_user.id in admin_ids:  # type: ignore
-        return True
+    if isinstance(message, CallbackQuery) or isinstance(message, Message):
+        if message.from_user.id in admin_ids:
+            return True
 
     return False
 
