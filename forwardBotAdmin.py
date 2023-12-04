@@ -214,9 +214,9 @@ def get_user_id():
     return str(user.id)
 
 
-def authAdmin(message: Union[Message, CallbackQuery]) -> bool:
+def authAdmin(message: Union[Message, CallbackQuery, int, str]) -> bool:
     """权鉴 authorization"""
-    if isinstance(message, (int, str)):
+    if isinstance(message, int) or isinstance(message, str):
         id = int(message)
         if id in admin_ids:
             return True
