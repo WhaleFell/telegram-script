@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 import pyromod
 
 # ListenerTypes.CALLBACK_QUERY
-from pyromod.listen.listen import ListenerTypes
+
 from pyromod.helpers import ikb, array_chunk
 from pyrogram import Client, idle, filters  # type: ignore
 from pyrogram.types import (
